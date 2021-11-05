@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.4.22 <0.9.0;
+// pragma solidity >=0.4.22 <0.9.0;
+pragma solidity >=0.6.7;
+
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
+import "@chainlink/contracts/src/v0.8/Denominations.sol";
+
+import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 // @title "This contract swaps a given asset with a stablecoin if the users asset value is <= user specified dip_amount"
 // @author "Prithviraj Murthy"
@@ -10,9 +16,8 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 // @return "A confirmation of whether or not the users asset has been successfully swapped with a stablecoin."
 
 
-contract StopLoss {
-    uint public assetInformationCount = 0; //State variable written to the smart contract
-
+contract StopLoss is KeeperCompatibleInterface {
+    
     struct AssetInformation {
         uint user_id;
         string asset_address;
@@ -28,17 +33,25 @@ contract StopLoss {
         bool created
     );
 
+    event AssetLatestPriceEvent(int price);
+
     mapping(uint => AssetInformation) public assetInformations; 
 
+    FeedRegistryInterface internal registry;
+    uint public assetInformationCount = 0; //State variable written to the smart contract
+    
     AggregatorV3Interface internal priceFeed;
-
-    /**
-     * Network: Kovan
-     * Aggregator: ETH/USD
-     * Address: 0x9326BFA02ADD2366b30bacB125260Af641031331
-     */
+    //Time interval between price checks for asset information
+    uint256 public immutable interval;
+    //Last price check time
+    uint256 public lastTimeStamp;
     constructor() {
         priceFeed = AggregatorV3Interface(0x9326BFA02ADD2366b30bacB125260Af641031331);
+        // registry = FeedRegistryInterface(_registry);
+        
+        interval = 1;
+        lastTimeStamp = block.timestamp;
+        counter = 0;
     }
 
     function createAssetInformation(uint user_id, string memory asset_address, uint total_asset_value, uint dip_amount) public {
@@ -47,9 +60,7 @@ contract StopLoss {
         emit AssetInformationUploadedEvent(user_id, asset_address, total_asset_value, dip_amount, false);
     }
 
-    /**
-     * Returns the latest price
-     */
+    // Call chainlink price fed and registry to get price information.
     function getLatestPrice() public view returns (int) {
         (
             uint80 roundID, 
@@ -59,6 +70,30 @@ contract StopLoss {
             uint80 answeredInRound
         ) = priceFeed.latestRoundData();
         return price;
+        // emit AssetLatestPrice(price);
     }
+    // function getLatestPrice() public {
+    //     (
+    //         uint80 roundID, 
+    //         int price,
+    //         uint startedAt,
+    //         uint timeStamp,
+    //         uint80 answeredInRound
+    //     ) = priceFeed.latestRoundData();
+    //     emit AssetLatestPriceEvent(price);
+    // }
 
+    //Called by Chainlink Keepers to check if work needs to be done
+    function checkUpkeep(
+        bytes calldata /*checkData */
+    ) external override returns (bool upkeepNeeded, bytes memory) {
+        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval; // TODO: Add condition to check if asset value < dip_amount (call getLatestPrice)
+
+    }
+    uint public counter;
+    //Called by Chainlink Keepers to handle work
+    function performUpkeep(bytes calldata) external override {
+        lastTimeStamp = block.timestamp;
+        // TODO: Swap if returned True from checkUpKeep.
+    }
 }
