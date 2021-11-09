@@ -1,26 +1,20 @@
 pragma solidity ^0.7.0;
 
-
 // Working model for how the liquidation function (Stop Loss) should work. All of the information 
 // for the swap transaction should be wrapped so that it will self populate with the 
 // details of the account corresponding to the wallet address of the connected wallet.
-
 
 /*
 Demo built for rinkeby testnet. 
 
 WETH Rinkeby = 0xc778417e063141139fce010982780140aa0cd5ab
 BAT Rinkeby = 0xDA5B056Cfb861282B4b59d29c9B395bcC238D29B
-
-
 UNIv2 Router Rinkeby = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
 
 notes: 
 You must approve the contract to spend the WETH from the Rinkeby WETH SC directly. 
 otherwise the transaction will fail. 
 */
-
-
 
 /*  SHORT DESCRIPTION ON HOW TO USE
 1) 
@@ -84,16 +78,11 @@ interface IUniswapV2Factory {
 
 // Actual Contract starts here -----------------------------------------------------------
 contract tokenSwap {
-    
     //address of the uniswap v2 router on Rinkeby 
     address private constant UNISWAP_V2_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     
     //address of WETH token on Rinkeby  
     address private constant WETH = 0xc778417e063141139fce010982780140aa0cd5ab;
-
-
-
-   
 
     // Function to transfer ERC20 tokens to the contract after they have been approved by the depositor  
     function depositToken(uint tokenAmount) public {
@@ -101,7 +90,7 @@ contract tokenSwap {
         token.transferFrom(msg.sender, address(this), tokenAmount);
     }
     
-
+    // The actual swap function, Calling this function will cause the SC to swap the tokens 
    function swap(address _tokenIn, address _tokenOut, uint256 _amountIn, uint256 _amountOutMin, address _to) external {
     // Approve the the Rinkeby Uniswap v2 Router to spend the coins that are held by the smart contract 
     IERC20(_tokenIn).approve(UNISWAP_V2_ROUTER, _amountIn);
