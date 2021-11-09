@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // pragma solidity >=0.4.22 <0.9.0;
-pragma solidity >=0.6.7;
+pragma solidity ^0.8.0;
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
 import "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 import "@chainlink/contracts/src/v0.8/Denominations.sol";
-
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 // @title "This contract swaps a given asset with a stablecoin if the users asset value is <= user specified dip_amount"
@@ -17,7 +17,8 @@ import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 
 contract StopLoss is KeeperCompatibleInterface {
-    
+      uint public counter;
+   
     struct AssetInformation {
         uint user_id;
         string asset_address;
@@ -32,9 +33,6 @@ contract StopLoss is KeeperCompatibleInterface {
         uint dip_amount,
         bool created
     );
-
-    event AssetLatestPriceEvent(int price);
-
     mapping(uint => AssetInformation) public assetInformations; 
 
     FeedRegistryInterface internal registry;
@@ -47,7 +45,7 @@ contract StopLoss is KeeperCompatibleInterface {
     uint256 public lastTimeStamp;
     constructor() {
         priceFeed = AggregatorV3Interface(0x9326BFA02ADD2366b30bacB125260Af641031331);
-        // registry = FeedRegistryInterface(_registry);
+      
         
         interval = 1;
         lastTimeStamp = block.timestamp;
@@ -55,13 +53,17 @@ contract StopLoss is KeeperCompatibleInterface {
     }
 
     function createAssetInformation(uint user_id, string memory asset_address, uint total_asset_value, uint dip_amount) public {
-        assetInformationCount ++;
+        require(dip_amount > 0,"dip-amount must be  > 0");
+
+        assetInformationCount++;
+
         assetInformations[assetInformationCount] = AssetInformation(user_id, asset_address, total_asset_value, dip_amount);
+
         emit AssetInformationUploadedEvent(user_id, asset_address, total_asset_value, dip_amount, false);
     }
 
-    // Call chainlink price fed and registry to get price information.
-    function getLatestPrice() public view returns (int) {
+    // Call chainlink price feed and registry to get price information.
+     function getLatestPrice() public view returns (int) {
         (
             uint80 roundID, 
             int price,
@@ -70,18 +72,8 @@ contract StopLoss is KeeperCompatibleInterface {
             uint80 answeredInRound
         ) = priceFeed.latestRoundData();
         return price;
-        // emit AssetLatestPrice(price);
     }
-    // function getLatestPrice() public {
-    //     (
-    //         uint80 roundID, 
-    //         int price,
-    //         uint startedAt,
-    //         uint timeStamp,
-    //         uint80 answeredInRound
-    //     ) = priceFeed.latestRoundData();
-    //     emit AssetLatestPriceEvent(price);
-    // }
+  
 
     //Called by Chainlink Keepers to check if work needs to be done
     function checkUpkeep(
@@ -90,8 +82,7 @@ contract StopLoss is KeeperCompatibleInterface {
         upkeepNeeded = (block.timestamp - lastTimeStamp) > interval; // TODO: Add condition to check if asset value < dip_amount (call getLatestPrice)
 
     }
-    uint public counter;
-    //Called by Chainlink Keepers to handle work
+   //Called by Chainlink Keepers to handle work
     function performUpkeep(bytes calldata) external override {
         lastTimeStamp = block.timestamp;
         // TODO: Swap if returned True from checkUpKeep.
