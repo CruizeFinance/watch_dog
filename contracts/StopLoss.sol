@@ -12,7 +12,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 // @author "Prithviraj Murthy"
 // @dev "This smart contract calls the chainlink contract priceFeed to get the latest price of the users asset and based on dip_amount, decides whether or not to swap it"
 // @notices "This smart contract accepts a users asset information and calls the chainlink contract priceFeed and based on the user specified dip_amount, decides whether or not to swap it"
-// @parameter "Token_onwer, asset_address, total_asset_value, dip_amount"
+// @parameter "user_id, asset_address, total_asset_value, dip_amount"
 // @return "A confirmation of whether or not the users asset has been successfully swapped with a stablecoin."
 
 
@@ -20,14 +20,14 @@ contract StopLoss is KeeperCompatibleInterface {
       uint public counter;
    
     struct AssetInformation {
-        address Token_onwer;
+        uint user_id;
         string asset_address;
         uint total_asset_value;
         uint dip_amount; // Amount of dip in the asset the user wants to set as a limit below which it'll be swapped with stablecoint
     }
 
     event AssetInformationUploadedEvent(
-       address Token_onwer,
+        uint user_id,
         string asset_address,
         uint total_asset_value,
         uint dip_amount,
@@ -52,14 +52,14 @@ contract StopLoss is KeeperCompatibleInterface {
         counter = 0;
     }
 
-    function createAssetInformation(address Token_onwer, string memory asset_address, uint total_asset_value, uint dip_amount) public {
+    function createAssetInformation(uint user_id, string memory asset_address, uint total_asset_value, uint dip_amount) public {
         require(dip_amount > 0,"dip-amount must be  > 0");
 
         assetInformationCount++;
 
-        assetInformations[assetInformationCount] = AssetInformation(Token_onwer, asset_address, total_asset_value, dip_amount);
+        assetInformations[assetInformationCount] = AssetInformation(user_id, asset_address, total_asset_value, dip_amount);
 
-        emit AssetInformationUploadedEvent(Token_onwer, asset_address, total_asset_value, dip_amount, false);
+        emit AssetInformationUploadedEvent(user_id, asset_address, total_asset_value, dip_amount, false);
     }
 
     // Call chainlink price feed and registry to get price information.
