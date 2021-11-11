@@ -17,8 +17,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 
 contract StopLoss is KeeperCompatibleInterface {
-      uint public counter;
-   
+        uint public counter;
     struct AssetInformation {
         uint user_id;
         string asset_address;
@@ -33,6 +32,9 @@ contract StopLoss is KeeperCompatibleInterface {
         uint dip_amount,
         bool created
     );
+
+    event AssetLatestPriceEvent(int price);
+
     mapping(uint => AssetInformation) public assetInformations; 
 
     FeedRegistryInterface internal registry;
@@ -40,25 +42,19 @@ contract StopLoss is KeeperCompatibleInterface {
     
     AggregatorV3Interface internal priceFeed;
     //Time interval between price checks for asset information
-    uint256 public immutable interval;
+    uint public immutable interval;
     //Last price check time
     uint256 public lastTimeStamp;
-    constructor() {
+    constructor(uint updateintervale) {
         priceFeed = AggregatorV3Interface(0x9326BFA02ADD2366b30bacB125260Af641031331);
-      
-        
-        interval = 1;
+        interval = updateintervale;
         lastTimeStamp = block.timestamp;
         counter = 0;
     }
 
     function createAssetInformation(uint user_id, string memory asset_address, uint total_asset_value, uint dip_amount) public {
-        require(dip_amount > 0,"dip-amount must be  > 0");
-
-        assetInformationCount++;
-
+        assetInformationCount ++;
         assetInformations[assetInformationCount] = AssetInformation(user_id, asset_address, total_asset_value, dip_amount);
-
         emit AssetInformationUploadedEvent(user_id, asset_address, total_asset_value, dip_amount, false);
     }
 
@@ -73,18 +69,22 @@ contract StopLoss is KeeperCompatibleInterface {
         ) = priceFeed.latestRoundData();
         return price;
     }
+    // 0x79617Ea92859130Fb2660588FB19e1153C619B79
   
 
     //Called by Chainlink Keepers to check if work needs to be done
     function checkUpkeep(
-        bytes calldata /*checkData */
-    ) external override returns (bool upkeepNeeded, bytes memory) {
-        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval; // TODO: Add condition to check if asset value < dip_amount (call getLatestPrice)
-
+        bytes calldata checkData 
+    ) external override returns (bool upkeepNeeded, bytes memory performData) {
+        upkeepNeeded = true;// TODO: Add condition to check if asset value < dip_amount (call getLatestPrice)
+         performData = checkData;
     }
-   //Called by Chainlink Keepers to handle work
-    function performUpkeep(bytes calldata) external override {
+
+    //Called by Chainlink Keepers to handle work
+    function performUpkeep(bytes calldata performData) external override {
         lastTimeStamp = block.timestamp;
+        counter = counter+1;
+        performData;
         // TODO: Swap if returned True from checkUpKeep.
     }
 }
