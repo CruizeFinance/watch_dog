@@ -177,7 +177,8 @@ contract StopLoss is KeeperCompatibleInterface {
     function checkUpkeep(
         bytes calldata /*checkData */
     ) external override returns (bool upkeepNeeded, bytes memory) {
-        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval; // TODO: Add condition to check if asset value < dip_amount (call getLatestPrice)
+        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
+        // TODO: Add condition to check if asset value < dip_amount (call getLatestPrice)
 
     }
    //Called by Chainlink Keepers to handle work
@@ -188,7 +189,6 @@ contract StopLoss is KeeperCompatibleInterface {
     }
 
 
-
     function swapLimitBuy(address token1 ) {
         // TODO: Follow up to see what is the deal with the dex 
     }
@@ -197,11 +197,17 @@ contract StopLoss is KeeperCompatibleInterface {
         //TODO: 
     }
 
-
+    /*
+    Allows the User to stake their funds to the AAVE protocol and earn yield.
+    */
     function stakeToAAVE(address assetToStake, uint256 _amt) {
+        // For Production: -- 
+        // IlendingPoolAddressProvider provider = IlendingPoolAddressProvider();
+        // IlendingPool public lendingPool = ILendingPool(provider.getLendingPool());
+    
         // For Kovan TestNet
         IERC20 token = IERC20(assetToStake);
-        ILendingPool public lendingPool = ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
+        ILendingPool lendingPool = ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
         token.approve(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe, _amt);
         uint16 referral = 0;
         lendingPool.deposit(address(USDT), _amt, address(this), referral);
