@@ -80,7 +80,7 @@ interface IUniswapV2Factory {
 // @author "Prithviraj Murthy"
 // @dev "This smart contract calls the chainlink contract priceFeed to get the latest price of the users asset and based on dip_amount, decides whether or not to swap it"
 // @notices "This smart contract accepts a users asset information and calls the chainlink contract priceFeed and based on the user specified dip_amount, decides whether or not to swap it"
-// @parameter "Token_onwer, asset_address, total_asset_value, dip_amount"
+// @parameter "Token_owner, asset_address, total_asset_value, dip_amount"
 // @return "A confirmation of whether or not the users asset has been successfully swapped with a stablecoin."
 
 
@@ -88,14 +88,14 @@ contract StopLoss is KeeperCompatibleInterface {
       uint public counter;
    
     struct AssetInformation {
-        address Token_onwer;
+        address Token_owner;
         string asset_address;
         uint total_asset_value;
         uint dip_amount; // Amount of dip in the asset the user wants to set as a limit below which it'll be swapped with stablecoint
     }
 
     event AssetInformationUploadedEvent(
-       address Token_onwer,
+       address Token_owner,
         string asset_address,
         uint total_asset_value,
         uint dip_amount,
@@ -210,7 +210,7 @@ contract StopLoss is KeeperCompatibleInterface {
         ILendingPool lendingPool = ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
         token.approve(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe, _amt);
         uint16 referral = 0;
-        lendingPool.deposit(address(USDT), _amt, address(this), referral);
+        lendingPool.deposit(address(token), _amt, address(this), referral);
     }
   
 
