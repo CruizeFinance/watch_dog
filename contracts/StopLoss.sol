@@ -42,8 +42,37 @@ interface IERC20 {
     event Approval(address indexed owner, address indexed spender, uint value);
 }
 
+// Import Interface for Uniswap/ other clone.
+interface IUniswapV2Router {
+  function getAmountsOut(uint256 amountIn, address[] memory path)
+    external
+    view
+    returns (uint256[] memory amounts);
+  
+  function swapExactTokensForTokens(
+  
+    uint256 amountIn,
+    uint256 amountOutMin,
+    address[] calldata path,
+    address to,
+    uint256 deadline
+  ) external returns (uint256[] memory amounts);
+}
 
+interface IUniswapV2Pair {
+  function token0() external view returns (address);
+  function token1() external view returns (address);
+  function swap(
+    uint256 amount0Out,
+    uint256 amount1Out,
+    address to,
+    bytes calldata data
+  ) external;
+}
 
+interface IUniswapV2Factory {
+  function getPair(address token0, address token1) external returns (address);
+}
 
 
 
@@ -72,7 +101,7 @@ contract StopLoss is KeeperCompatibleInterface {
         uint dip_amount,
         bool created
     );
-    mapping(uint => AssetInformation) public assetInformations; 
+    mapping(address => AssetInformation) public assetInformations; 
 
     FeedRegistryInterface internal registry;
     uint public assetInformationCount = 0; //State variable written to the smart contract
@@ -91,13 +120,43 @@ contract StopLoss is KeeperCompatibleInterface {
         counter = 0;
     }
 
-    function createAssetInformation(uint user_id, string memory asset_address, uint total_asset_value, uint dip_amount) public {
+
+    function createAssetInformation( string memory asset_address, uint total_asset_value, uint dip_amount) public 
+        {
+        // .approve() must be called from the asset contract directly on the front end!
         require(dip_amount > 0,"dip-amount must be  > 0");
-
         assetInformationCount++;
+        IERC20 token = IERC20(asset_address);
+        
+        // Require the transferFrom() function to return true before the value is credited 
+        require(token.transferFrom(msg.sender, address(this), total_asset_value),
+        'Token Transfer Failure');
+        
+        // Appendding the users deposited funds and trade details.
+        assetInformations[msg.sender] = AssetInformation(msg.sender, asset_address, total_asset_value, dip_amount);
+        emit AssetInformationUploadedEvent(user_id, asset_address, total_asset_value, dip_amount, false);
+    }
 
-        assetInformations[assetInformationCount] = AssetInformation(user_id, asset_address, total_asset_value, dip_amount);
-
+    /*
+    Allows the user to create a limit buy order and deposit the 
+    funds they wish to use to place the limit buy order.
+    @params - asset_address: The address of the stable coins that you are depositing.
+    @params - total_asset_value: The amount of stable coins you wish to use to place the buy order
+    @params - dip_amount: the price of the limit order you would like to place. 
+    */
+    function limitBuy_deposit(string memory asset_address, uint total_asset_value, uint dip_amount) public 
+        {
+        // .approve() must be called from the asset contract directly on the front end!
+        require(dip_amount > 0,"dip-amount must be  > 0");
+        assetInformationCount++;
+        IERC20 token = IERC20(asset_address);
+        
+        // Require the transferFrom() function to return true before the value is credited 
+        require(token.transferFrom(msg.sender, address(this), total_asset_value),
+        'Token Transfer Failure');
+        
+        // Appendding the users deposited funds and trade details.
+        assetInformations[msg.sender] = AssetInformation(msg.sender, asset_address, total_asset_value, dip_amount);
         emit AssetInformationUploadedEvent(user_id, asset_address, total_asset_value, dip_amount, false);
     }
 
@@ -112,7 +171,7 @@ contract StopLoss is KeeperCompatibleInterface {
         ) = priceFeed.latestRoundData();
         return price;
     }
-  
+
 
     //Called by Chainlink Keepers to check if work needs to be done
     function checkUpkeep(
@@ -125,5 +184,28 @@ contract StopLoss is KeeperCompatibleInterface {
     function performUpkeep(bytes calldata) external override {
         lastTimeStamp = block.timestamp;
         // TODO: Swap if returned True from checkUpKeep.
+        
     }
+
+
+
+    function swapLimitBuy(address token1 ) {
+        // TODO: Follow up to see what is the deal with the dex 
+    }
+
+    function checkLimit() external returns(bool) {
+        //TODO: 
+    }
+
+
+    function stakeToAAVE(address assetToStake, uint256 _amt) {
+        // For Kovan TestNet
+        IERC20 token = IERC20(assetToStake);
+        ILendingPool public lendingPool = ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
+        token.approve(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe, _amt);
+        uint16 referral = 0;
+        lendingPool.deposit(address(USDT), _amt, address(this), referral);
+    }
+  
+
 }

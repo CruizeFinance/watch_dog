@@ -1,3 +1,4 @@
+//https://docs.aave.com/developers/the-core-protocol/addresses-provider
 pragma solidity 0.6.12;
 
 import 'https://github.com/aave/protocol-v2/blob/ice/mainnet-deployment-03-12-2020/contracts/interfaces/ILendingPoolAddressesProvider.sol';
@@ -36,6 +37,10 @@ contract AAVE2 {
     
     //TODO Implement lending pool provider to fetch data automatically.
     
+    //IlendingPoolAddressProvider provider = IlendingPoolAddressProvider();
+    //IlendingPool public lendingPool = ILendingPool(provider.getLendingPool());
+    
+    // For Kovan TestNet
     IERC20 public USDT = IERC20(0xe22da380ee6B445bb8273C81944ADEB6E8450422);
     ILendingPool public lendingPool = ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
     
@@ -60,6 +65,16 @@ contract AAVE2 {
     
     function withdrawToSC(uint256 _amt) external {
         lendingPool.withdraw(address(USDT),_amt, address(this));
+    }
+
+
+    function Stake(address assetToStake, uint256 _amt) {
+        // For Kovan TestNet
+        IERC20 public token = IERC20(assetToStake);
+        ILendingPool public lendingPool = ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
+        token.approve(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe, _amt);
+        uint16 referral = 0;
+        lendingPool.deposit(address(USDT), _amt, address(this), referral);
     }
     
 
