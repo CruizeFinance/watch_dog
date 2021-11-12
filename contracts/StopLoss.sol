@@ -2,11 +2,50 @@
 // pragma solidity >=0.4.22 <0.9.0;
 pragma solidity ^0.8.0;
 
- import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
+// Chainlink Keeper and Chainlink Interface
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 import "@chainlink/contracts/src/v0.8/Denominations.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
+
+
+// Imports for interfacing with the AAVE lending protocol. 
+import 'https://github.com/aave/protocol-v2/blob/ice/mainnet-deployment-03-12-2020/contracts/interfaces/ILendingPoolAddressesProvider.sol';
+import 'https://github.com/aave/protocol-v2/blob/ice/mainnet-deployment-03-12-2020/contracts/interfaces/ILendingPool.sol';
+
+interface IaToken {
+    function balanceOf(address _user) external view returns (uint256);
+    function redeem(uint _amount) external;
+}
+
+interface IAaveLendingPool {
+    function deposit(
+        address _reserve,
+        uint256 _amount, 
+        uint16 _referralCose
+        ) external;
+}
+
+
+interface IERC20 {
+    function totalSupply() external view returns (uint);
+    function balanceOf(address account) external view returns (uint);
+    function transfer(address recipient, uint amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint);
+    function approve(address spender, uint amount) external returns (bool);
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint amount
+    ) external returns (bool);
+    event Transfer(address indexed from, address indexed to, uint value);
+    event Approval(address indexed owner, address indexed spender, uint value);
+}
+
+
+
+
+
 
 // @title "This contract swaps a given asset with a stablecoin if the users asset value is <= user specified dip_amount"
 // @author "Prithviraj Murthy"
