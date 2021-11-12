@@ -79,7 +79,8 @@ contract StopLoss is KeeperCompatibleInterface {
     function checkUpkeep(
         bytes calldata /*checkData */
     ) external override returns (bool upkeepNeeded, bytes memory) {
-        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval; // TODO: Add condition to check if asset value < dip_amount (call getLatestPrice)
+        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
+        // TODO: Add condition to check if asset value < dip_amount (call getLatestPrice)
 
     }
    //Called by Chainlink Keepers to handle work
