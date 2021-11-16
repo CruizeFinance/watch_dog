@@ -1,4 +1,4 @@
-pragma solidity =0.8.0;
+pragma solidity =0.8.7;
 
 // Chainlink Keeper and Chainlink Interface
 import "https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -532,6 +532,10 @@ contract StopLoss is KeeperCompatibleInterface {
     uint256 public immutable interval;
     //Last price check time
     uint256 public lastTimeStamp;
+    
+    address wBTC;
+    address wETH;
+    address link;
 
 
     // Setting up key so that price feed can be asset agnostic 
@@ -550,13 +554,13 @@ contract StopLoss is KeeperCompatibleInterface {
 
         // Adding Link, wBTc, and ETH support
         // Other supported Assets should be added here 
-        address wBTC = 0xe0C9275E44Ea80eF17579d33c55136b7DA269aEb;
+        wBTC = 0xe0C9275E44Ea80eF17579d33c55136b7DA269aEb;
         pricekey[wBTC] = PriceFeedKey(0x6135b13325bfC4B00278B4abC5e20bbce2D6580e);
 
-        address link = 0xa36085F69e2889c224210F603D836748e7dC0088;
+        link = 0xa36085F69e2889c224210F603D836748e7dC0088;
         pricekey[link] = PriceFeedKey(0x396c5E36DD0a0F5a5D33dae44368D4193f69a1F0);
 
-        address wETH = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
+        wETH = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
         pricekey[wETH] = PriceFeedKey(0x9326BFA02ADD2366b30bacB125260Af641031331);
     }
 
@@ -627,17 +631,7 @@ contract StopLoss is KeeperCompatibleInterface {
     function swapLimitBuy(address token1 ) public {
         // TODO: Follow up to see what is the deal with the dex 
     }
-
-    function checkLimit() external returns(bool) {
-        for(uint i=0;  i < orders.length; i++) {
-            if(orders[i].dip_amount <= getLatestPrice(orders[i].asset_deposited)) {
-                
-            }
-    }
-
-    /*
-    Allows the User to stake their funds to the AAVE protocol and earn yield.
-    */
+    
     function stakeToAAVE(address assetToStake, uint256 _amt) internal {
         // For Production: -- 
         // IlendingPoolAddressProvider provider = IlendingPoolAddressProvider();
@@ -662,4 +656,44 @@ contract StopLoss is KeeperCompatibleInterface {
         // For production
         lendingPool.withdraw(assetToWithdraw, _amt, recipient);
     }
+
+    function swap(address _tokenIn, address _tokenOut, uint256 _amountIn, uint256 _amountOutMin, address _to) external {
+    // Approve the the Rinkeby Uniswap v2 Router to spend the coins that are held by the smart contract 
+    IERC20(_tokenIn).approve(dexRouter, _amountIn);
+    
+    // Logic for the optimal path of the swap
+    address[] memory path;
+        if (_tokenIn == wETH || _tokenOut == wETH) {
+        path = new address[](2);
+        path[0] = _tokenIn;
+        path[1] = _tokenOut;
+        } else {
+        path = new address[](3);
+        path[0] = _tokenIn;
+        path[1] = wETH;
+        path[2] = _tokenOut;
+        }
+        // Calling the swap function from the uniswap V2 router contract on Rinkeby 
+        IUniswapV2Router(dexRouter).swapExactTokensForTokens(_amountIn, _amountOutMin, path, _to, block.timestamp);
+    }
+    
+
+
+    function getAmountOutMin(address _tokenIn, address _tokenOut, uint256 _amountIn) external view returns (uint256) {
+        // Logic to get the optimal path for the swap
+        address[] memory path;
+        if (_tokenIn == wETH || _tokenOut == wETH) {
+            path = new address[](2);
+            path[0] = _tokenIn;
+            path[1] = _tokenOut;
+        } else {
+            path = new address[](3);
+            path[0] = _tokenIn;
+            path[1] = wETH;
+            path[2] = _tokenOut;
+        }
+        // Calling the .getAmountsOut() univswap v2 router contract 
+        uint256[] memory amountOutMins = IUniswapV2Router(dexRouter).getAmountsOut(_amountIn, path);
+        return amountOutMins[path.length -1];  
+    }  
 }
