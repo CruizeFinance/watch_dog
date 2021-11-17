@@ -5,12 +5,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 import "@chainlink/contracts/src/v0.8/Denominations.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
-// @title "This contract swaps a given asset with a stablecoin if the users asset value is <= user specified dip_amount"
-// @author "Prithviraj Murthy"
-// @dev "This smart contract calls the chainlink contract priceFeed to get the latest price of the users asset and based on dip_amount, decides whether or not to swap it"
-// @notices "This smart contract accepts a users asset information and calls the chainlink contract priceFeed and based on the user specified dip_amount, decides whether or not to swap it"
-// @parameter "user_id, asset_address, total_asset_value, dip_amount"
-// @return "A confirmation of whether or not the users asset has been successfully swapped with a stablecoin."
 
 
 contract LimitOrder is KeeperCompatibleInterface {
