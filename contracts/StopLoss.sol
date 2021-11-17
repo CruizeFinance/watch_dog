@@ -134,7 +134,7 @@ contract StopLoss is KeeperCompatibleInterface {
         
         // Appendding the users deposited funds and trade details.
         assetInformations[msg.sender] = AssetInformation(msg.sender, asset_address, total_asset_value, dip_amount);
-        emit AssetInformationUploadedEvent(user_id, asset_address, total_asset_value, dip_amount, false);
+        emit AssetInformationUploadedEvent(msg.sender, asset_address, total_asset_value, dip_amount, false);
     }
 
     /*
@@ -157,7 +157,7 @@ contract StopLoss is KeeperCompatibleInterface {
         
         // Appendding the users deposited funds and trade details.
         assetInformations[msg.sender] = AssetInformation(msg.sender, asset_address, total_asset_value, dip_amount);
-        emit AssetInformationUploadedEvent(user_id, asset_address, total_asset_value, dip_amount, false);
+        emit AssetInformationUploadedEvent(msg.sender, asset_address, total_asset_value, dip_amount, false);
     }
 
     // Call chainlink price feed and registry to get price information.
@@ -200,7 +200,7 @@ contract StopLoss is KeeperCompatibleInterface {
     /*
     Allows the User to stake their funds to the AAVE protocol and earn yield.
     */
-    function stakeToAAVE(address assetToStake, uint256 _amt) {
+    function stakeToAAVE(address assetToStake, uint256 _amt) public {
         // For Production: -- 
         // IlendingPoolAddressProvider provider = IlendingPoolAddressProvider();
         // IlendingPool public lendingPool = ILendingPool(provider.getLendingPool());
