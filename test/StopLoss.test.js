@@ -20,7 +20,7 @@ contract('StopLoss', (accounts) => {
         // console.log('feedRegistryInterfaceABI',feedRegistryInterfaceABI)
         // this.stopLoss = await StopLoss.new(feedRegistryInterfaceABI, 1, addr)
     })
-let tester = 123;
+let tester =4;
     it('deploys successfully', async () =>{
         const address =await this.stopLoss.address
         console.log('address::', address)
