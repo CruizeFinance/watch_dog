@@ -1,4 +1,4 @@
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 // Working model for how the liquidation function (Stop Loss) should work. All of the information 
 // for the swap transaction should be wrapped so that it will self populate with the 

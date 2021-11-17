@@ -1,5 +1,5 @@
 //https://docs.aave.com/developers/the-core-protocol/addresses-provider
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 import 'https://github.com/aave/protocol-v2/blob/ice/mainnet-deployment-03-12-2020/contracts/interfaces/ILendingPoolAddressesProvider.sol';
 import 'https://github.com/aave/protocol-v2/blob/ice/mainnet-deployment-03-12-2020/contracts/interfaces/ILendingPool.sol';
@@ -68,10 +68,10 @@ contract AAVE2 {
     }
 
 
-    function Stake(address assetToStake, uint256 _amt) {
+    function Stake(address assetToStake, uint256 _amt) public {
         // For Kovan TestNet
-        IERC20 public token = IERC20(assetToStake);
-        ILendingPool public lendingPool = ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
+        IERC20  token = IERC20(assetToStake);
+        ILendingPool lendingPool = ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
         token.approve(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe, _amt);
         uint16 referral = 0;
         lendingPool.deposit(address(USDT), _amt, address(this), referral);
