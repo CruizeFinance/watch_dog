@@ -447,6 +447,9 @@ contract StopLoss is KeeperCompatibleInterface {
     function withdraw(uint _amt, address _token) external returns(bool) {
       AssetInformation memory user = assetInformations[msg.sender];
       require(user.total_asset_value > _amt);
+      withdrawfromAAVE(_token,_amt,address(this));
+      
+      require(user.total_asset_value > _amt);
       uint newBal = user.total_asset_value - _amt;
       IERC20 token = IERC20(_token);
       require(token.transfer(msg.sender, _amt));
@@ -496,6 +499,8 @@ contract StopLoss is KeeperCompatibleInterface {
           dip_amount, 
           false, 
           false);
+          
+         stakeToAAVE(asset_deposited, total_asset_value);
     }
 
     function stopLoss_deposit(
@@ -569,22 +574,17 @@ contract StopLoss is KeeperCompatibleInterface {
         } else {
             upkeepNeeded = false;
         }
-
     }
 
    //Called by Chainlink Keepers to handle work
     function performUpkeep(bytes calldata) external override {
         lastTimeStamp = block.timestamp;
-        
         if (checkStop()) {
           upkeepStop();
         }
-
         if (checkLimit()) {
           upkeepLimit();
         }
-
-
     }
 
 
