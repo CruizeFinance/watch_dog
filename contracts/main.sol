@@ -1,8 +1,5 @@
 pragma solidity =0.8.10;
 
-// This version will compile in remix.
-
-
 // Chainlink Keeper and Chainlink Interface
 import "https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
@@ -367,7 +364,7 @@ contract StopLoss is KeeperCompatibleInterface {
 
 
 
-    function stakeToAAVE(address assetToStake, uint256 _amt) internal {
+    function stakeToAAVE(address assetToStake, uint256 _amt) internal returns(bool){
         // For Production: -- 
         // IlendingPoolAddressProvider provider = IlendingPoolAddressProvider();
         // IlendingPool public lendingPool = ILendingPool(provider.getLendingPool());
@@ -378,9 +375,11 @@ contract StopLoss is KeeperCompatibleInterface {
         token.approve(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe, _amt);
         uint16 referral = 0;
         lendingPool.deposit(address(token), _amt, address(this), referral);
+        return(true);
+        // Add conditional so it returns false if there is an error thrown
     }
 
-    function withdrawfromAAVE(address assetToWithdraw, uint256 _amt, address recipient) external {
+    function withdrawfromAAVE(address assetToWithdraw, uint256 _amt, address recipient) internal returns(bool) {
         // For Production
         //IlendingPoolAddressProvider provider = IlendingPoolAddressProvider();
         //IlendingPool public lendingPool = ILendingPool(provider.getLendingPool());
@@ -390,6 +389,8 @@ contract StopLoss is KeeperCompatibleInterface {
         
         // For production
         lendingPool.withdraw(assetToWithdraw, _amt, recipient);
+        return(true);
+        // Add conditional so it returns false if there is an error thrown
     }
 
     function swap(
@@ -537,7 +538,7 @@ contract StopLoss is KeeperCompatibleInterface {
         );
       }
       
-    function checkStop() internal returns(bool) {
+    function checkStop() internal view returns(bool) {
         for (uint i=0; i < stopOrders.length; i++) {
             if (stopOrders[i].dip_amount <= getLatestPrice(stopOrders[i].asset_desired)) {
                 return(true);
@@ -546,7 +547,7 @@ contract StopLoss is KeeperCompatibleInterface {
 
     }
 
-    function checkLimit() internal returns(bool) {
+    function checkLimit() internal view returns(bool) {
          for (uint i=0; i < limitOrders.length; i++) {
             if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
                 return(true);
@@ -555,30 +556,19 @@ contract StopLoss is KeeperCompatibleInterface {
     }
 
 
-/*
-    //Called by Chainlink Keepers to check if work needs to be done
+
     function checkUpkeep(
         bytes calldata 
     ) external override returns (bool upkeepNeeded, bytes memory) {
         //upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
         
-
         if(checkStop()) {
             upkeepNeeded = true;
-        } else if (checkLimit())  {
+        } else if (checkLimit()) {
             upkeepNeeded = true;
         } else {
             upkeepNeeded = false;
         }
-        return(upkeepNeeded);
-    }
-*/
-
-
-    function checkUpkeep(
-        bytes calldata 
-    ) external override returns (bool upkeepNeeded, bytes memory) {
-        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
 
     }
 
@@ -624,12 +614,14 @@ contract StopLoss is KeeperCompatibleInterface {
     function upkeepLimit() internal returns(bool) {
         for (uint i =0; i < stopOrders.length; i++) {
             if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
-                /*
+                
                 require(
-                    // Implement function to withdraw assets that have been stakes 
-                    // before the execution of the limit order.
+                    withdrawfromAAVE(
+                        stopOrders[i].asset_deposited, 
+                        stopOrders[i].total_asset_value, 
+                        address(this))
                 );
-                */
+                
                 uint amtOut = getAmountOutMin(stopOrders[i].asset_desired, stopOrders[i].asset_deposited, stopOrders[i].total_asset_value);
 
                 require(
@@ -649,3 +641,4 @@ contract StopLoss is KeeperCompatibleInterface {
     }
 
 }
+   
