@@ -573,22 +573,22 @@ contract StopLoss {
             if (limitOrders[i].dip_amount >= getLatestPrice(limitOrders[i].asset_desired)) {
                 
                 
-                uint amtOut = getAmountOutMin(limitOrders[i].asset_desired, limitOrders[i].asset_deposited, limitOrders[i].total_asset_value);
+              uint amtOut = getAmountOutMin(limitOrders[i].asset_desired, limitOrders[i].asset_deposited, limitOrders[i].total_asset_value);
                 
-                withdrawfromAAVE(limitOrders[i].asset_deposited, limitOrders[i].total_asset_value, address(this));
+              withdrawfromAAVE(limitOrders[i].asset_deposited, limitOrders[i].total_asset_value, address(this));
                 
-                require(
-                    swap(limitOrders[i].asset_deposited,
-                    limitOrders[i].asset_desired,
-                    limitOrders[i].total_asset_value,
-                    address(this)
-                    )
-                );
+              require(
+                  swap(limitOrders[i].asset_deposited,
+                  limitOrders[i].asset_desired,
+                  limitOrders[i].total_asset_value,
+                  address(this)
+                  )
+              );
                 
-                balances[limitOrders[i].Token_owner] = Balance(limitOrders[i].Token_owner, limitOrders[i].asset_desired, amtOut);
-                stakeToAAVE(limitOrders[i].asset_desired, amtOut);
-                delete limitOrders[i];
-                return(true);
+              balances[limitOrders[i].Token_owner] = Balance(limitOrders[i].Token_owner, limitOrders[i].asset_desired, amtOut);
+              stakeToAAVE(limitOrders[i].asset_desired, amtOut);
+              delete limitOrders[i];
+              return(true);
             }
         }
     }
@@ -597,23 +597,23 @@ contract StopLoss {
         for (uint i =0; i < stopOrders.length; i++) {
             if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
                 
+            
+              uint amtOut = getAmountOutMin(stopOrders[i].asset_desired, stopOrders[i].asset_deposited, stopOrders[i].total_asset_value);
+              
+              withdrawfromAAVE(stopOrders[i].asset_deposited, stopOrders[i].total_asset_value, address(this));
                 
-                uint amtOut = getAmountOutMin(stopOrders[i].asset_desired, stopOrders[i].asset_deposited, stopOrders[i].total_asset_value);
-                
-                withdrawfromAAVE(stopOrders[i].asset_deposited, stopOrders[i].total_asset_value, address(this));
-                
-                require(
-                    swap(stopOrders[i].asset_deposited,
-                    stopOrders[i].asset_desired,
-                    stopOrders[i].total_asset_value,
-                    address(this)
-                    )
+              require(
+                  swap(stopOrders[i].asset_deposited,
+                  stopOrders[i].asset_desired,
+                  stopOrders[i].total_asset_value,
+                  address(this)
+                  )                
                 );
                 
-                balances[stopOrders[i].Token_owner] = Balance(stopOrders[i].Token_owner, stopOrders[i].asset_desired, amtOut);
-                stakeToAAVE(stopOrders[i].asset_desired, amtOut);
-                delete stopOrders[i];
-                return(true);
+              balances[stopOrders[i].Token_owner] = Balance(stopOrders[i].Token_owner, stopOrders[i].asset_desired, amtOut);
+              stakeToAAVE(stopOrders[i].asset_desired, amtOut);
+              delete stopOrders[i];
+              return(true);
             }
         }
     }
