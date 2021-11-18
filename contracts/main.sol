@@ -275,11 +275,19 @@ interface IUniswapV2Factory {
 // @return "A confirmation of whether or not the users asset has been successfully swapped with a stablecoin."
 
 
-contract StopLoss is KeeperCompatibleInterface {
+contract StopLoss {
     uint public counter;
 
     address public dexRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address private admin;
+    
+    struct Balance {
+        address _token_owner;
+        address _token;
+        uint256 _amt;
+    }
+    mapping(address => Balance) public balances;
+    
     
     struct AssetInformation {
         address Token_owner;
@@ -375,6 +383,8 @@ contract StopLoss is KeeperCompatibleInterface {
         token.approve(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe, _amt);
         uint16 referral = 0;
         lendingPool.deposit(address(token), _amt, address(this), referral);
+        
+        
         return(true);
         // Add conditional so it returns false if there is an error thrown
     }
@@ -389,6 +399,8 @@ contract StopLoss is KeeperCompatibleInterface {
         
         // For production
         lendingPool.withdraw(assetToWithdraw, _amt, recipient);
+        
+        
         return(true);
         // Add conditional so it returns false if there is an error thrown
     }
@@ -397,11 +409,11 @@ contract StopLoss is KeeperCompatibleInterface {
       address _tokenIn, 
       address _tokenOut, 
       uint256 _amountIn, 
-      uint256 _amountOutMin, 
       address _to
       ) internal returns(bool) {
     // Approve the the Rinkeby Uniswap v2 Router to spend the coins that are held by the smart contract 
       IERC20(_tokenIn).approve(dexRouter, _amountIn);
+      uint _amountOutMin = getAmountOutMin(_tokenIn, _tokenOut, _amountIn);
       
       // Logic for the optimal path of the swap
       address[] memory path;
@@ -417,7 +429,8 @@ contract StopLoss is KeeperCompatibleInterface {
           }
         // Calling the swap function from the uniswap V2 router contract on Rinkeby 
       IUniswapV2Router(dexRouter).swapExactTokensForTokens(_amountIn, _amountOutMin, path, _to, block.timestamp);
-      return(true);
+      return (true);
+      
     }
     
 
@@ -445,23 +458,17 @@ contract StopLoss is KeeperCompatibleInterface {
     }  
 
     function withdraw(uint _amt, address _token) external returns(bool) {
-      AssetInformation memory user = assetInformations[msg.sender];
-      require(user.total_asset_value > _amt);
+      Balance memory user = balances[msg.sender];
+      require(user._amt >= _amt);
       withdrawfromAAVE(_token,_amt,address(this));
       
-      require(user.total_asset_value > _amt);
-      uint newBal = user.total_asset_value - _amt;
+      
+      uint newBal = user._amt - _amt;
       IERC20 token = IERC20(_token);
       require(token.transfer(msg.sender, _amt));
-      assetInformations[msg.sender] = AssetInformation(user.Token_owner, user.asset_desired, user.asset_deposited, newBal, 0, false);
+      balances[msg.sender] = Balance(user._token_owner, user._token, newBal);
     }
-    /*
-    Allows the user to create a limit buy order and deposit the 
-    funds they wish to use to place the limit buy order.
-    @params - asset_address: The address of the stable coins that you are depositing.
-    @params - total_asset_value: The amount of stable coins you wish to use to place the buy order
-    @params - dip_amount: the price of the limit order you would like to place. 
-    */
+    
     function limitBuy_deposit(
       address asset_desired, 
       address asset_deposited, 
@@ -482,7 +489,7 @@ contract StopLoss is KeeperCompatibleInterface {
         );
         
         // Appendding the users deposited funds and trade details.
-        assetInformations[msg.sender] = AssetInformation(msg.sender, asset_desired ,asset_deposited, total_asset_value, dip_amount, false);
+        balances[msg.sender] = Balance(msg.sender ,asset_deposited, total_asset_value);
         counter +=1;
         limitOrders.push(AssetInformation(
             msg.sender,
@@ -523,7 +530,7 @@ contract StopLoss is KeeperCompatibleInterface {
         );
 
         //Appendding the accredited transgered 
-        assetInformations[msg.sender] = AssetInformation(msg.sender, asset_desired, asset_deposited, total_asset_value, dip_amount, false);
+        balances[msg.sender] = Balance(msg.sender, asset_deposited, total_asset_value);
         stopOrders.push(AssetInformation(
           msg.sender,
           asset_desired,
@@ -543,66 +550,42 @@ contract StopLoss is KeeperCompatibleInterface {
         );
       }
       
-    function checkStop() internal view returns(bool) {
+    function checkStop() external view returns(bool) {
         for (uint i=0; i < stopOrders.length; i++) {
-            if (stopOrders[i].dip_amount <= getLatestPrice(stopOrders[i].asset_desired)) {
-                return(true);
-            }
-        }
-
-    }
-
-    function checkLimit() internal view returns(bool) {
-         for (uint i=0; i < limitOrders.length; i++) {
             if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
                 return(true);
             }
         }
+
     }
 
-
-
-    function checkUpkeep(
-        bytes calldata 
-    ) external override returns (bool upkeepNeeded, bytes memory) {
-        //upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
-        
-        if(checkStop()) {
-            upkeepNeeded = true;
-        } else if (checkLimit()) {
-            upkeepNeeded = true;
-        } else {
-            upkeepNeeded = false;
+    function checkLimit() external view returns(bool) {
+         for (uint i=0; i < limitOrders.length; i++) {
+            if (limitOrders[i].dip_amount >= getLatestPrice(limitOrders[i].asset_desired)) {
+                return(true);
+            }
         }
     }
 
-   //Called by Chainlink Keepers to handle work
-    function performUpkeep(bytes calldata) external override {
-        lastTimeStamp = block.timestamp;
-        if (checkStop()) {
-          upkeepStop();
-        }
-        if (checkLimit()) {
-          upkeepLimit();
-        }
-    }
-
-
-    // Testing needed 
-    function upkeepStop() internal returns(bool) {
-        for (uint i = 0; i < limitOrders.length; i++) {
-            if (limitOrders[i].dip_amount <= getLatestPrice(limitOrders[i].asset_deposited)){
-                uint amtOut = getAmountOutMin(limitOrders[i].asset_deposited, limitOrders[i].asset_desired, limitOrders[i].total_asset_value);
-
+    
+    function upkeepLimit() external returns(bool) {
+        for (uint i =0; i < limitOrders.length; i++) {
+            if (limitOrders[i].dip_amount >= getLatestPrice(limitOrders[i].asset_desired)) {
+                
+                
+                uint amtOut = getAmountOutMin(limitOrders[i].asset_desired, limitOrders[i].asset_deposited, limitOrders[i].total_asset_value);
+                
+                withdrawfromAAVE(limitOrders[i].asset_deposited, limitOrders[i].total_asset_value, address(this));
+                
                 require(
-                    swap(limitOrders[i].asset_deposited, 
-                    limitOrders[i].asset_desired, 
+                    swap(limitOrders[i].asset_deposited,
+                    limitOrders[i].asset_desired,
                     limitOrders[i].total_asset_value,
-                    amtOut,
                     address(this)
                     )
                 );
-                assetInformations[limitOrders[i].Token_owner] = AssetInformation(limitOrders[i].Token_owner, address(0), limitOrders[i].asset_desired, amtOut, 0, true);
+                
+                balances[limitOrders[i].Token_owner] = Balance(limitOrders[i].Token_owner, limitOrders[i].asset_desired, amtOut);
                 stakeToAAVE(limitOrders[i].asset_desired, amtOut);
                 delete limitOrders[i];
                 return(true);
@@ -610,35 +593,28 @@ contract StopLoss is KeeperCompatibleInterface {
         }
     }
 
-    // Testing needed
-    function upkeepLimit() internal returns(bool) {
+      function upkeepStop() external returns(bool) {
         for (uint i =0; i < stopOrders.length; i++) {
             if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
                 
-                require(
-                    withdrawfromAAVE(
-                        stopOrders[i].asset_deposited, 
-                        stopOrders[i].total_asset_value, 
-                        address(this))
-                );
                 
                 uint amtOut = getAmountOutMin(stopOrders[i].asset_desired, stopOrders[i].asset_deposited, stopOrders[i].total_asset_value);
-
+                
+                withdrawfromAAVE(stopOrders[i].asset_deposited, stopOrders[i].total_asset_value, address(this));
+                
                 require(
                     swap(stopOrders[i].asset_deposited,
                     stopOrders[i].asset_desired,
                     stopOrders[i].total_asset_value,
-                    amtOut,
                     address(this)
                     )
                 );
-                assetInformations[stopOrders[i].Token_owner] = AssetInformation(stopOrders[i].Token_owner, address(0), stopOrders[i].asset_desired, amtOut, 0,true);
+                
+                balances[stopOrders[i].Token_owner] = Balance(stopOrders[i].Token_owner, stopOrders[i].asset_desired, amtOut);
                 stakeToAAVE(stopOrders[i].asset_desired, amtOut);
                 delete stopOrders[i];
                 return(true);
             }
         }
     }
-
 }
-   
