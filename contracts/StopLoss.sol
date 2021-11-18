@@ -369,7 +369,11 @@ contract StopLoss is KeeperCompatibleInterface {
     @params - total_asset_value: The amount of stable coins you wish to use to place the buy order
     @params - dip_amount: the price of the limit order you would like to place. 
     */
-    function limitBuy_deposit(address asset_desired, address asset_deposited, uint total_asset_value, uint dip_amount) public 
+    function limitBuy_deposit(
+      address asset_desired, 
+      address asset_deposited, 
+      uint total_asset_value, 
+      uint dip_amount) public 
         {
         // .approve() must be called from the asset contract directly on the front end!
         require(dip_amount > 0,"dip-amount must be  > 0");
@@ -377,8 +381,12 @@ contract StopLoss is KeeperCompatibleInterface {
         IERC20 token = IERC20(asset_deposited);
         
         // Require the transferFrom() function to return true before the value is credited 
-        require(token.transferFrom(msg.sender, address(this), total_asset_value),
-        'Token Transfer Failure');
+        require(
+          token.transferFrom(
+            msg.sender, 
+            address(this), 
+            total_asset_value)
+        );
         
         // Appendding the users deposited funds and trade details.
         assetInformations[msg.sender] = AssetInformation(msg.sender, asset_desired ,asset_deposited, total_asset_value, dip_amount, false);
@@ -390,15 +398,62 @@ contract StopLoss is KeeperCompatibleInterface {
             total_asset_value,
             dip_amount,
             false));
-        emit AssetInformationUploadedEvent(msg.sender, asset_desired, asset_deposited, total_asset_value, dip_amount, false, false);
+        emit AssetInformationUploadedEvent(
+          msg.sender, 
+          asset_desired, 
+          asset_deposited, 
+          total_asset_value,
+          dip_amount, 
+          false, 
+          false);
     }
+
+    function stopLoss_deposit(
+      address asset_desired,
+      address asset_deposited,
+      uint total_asset_value.
+      uint dip_amount) public 
+      {
+        // .approve() must be called from the asset contract directly on the front end
+        require(dip_amount > 0, 'dip-amount must be >0');
+        assetInformationCount++;
+        IERC20 token = IERC20(asset_deposited);
+
+        // Require that the transferFrom() function to return true before the value is credited
+        require(
+          token.transferFrom(
+            msg.sender,
+            address(this),
+            total_asset_value)
+        );
+
+        //Appendding the accredited transgered 
+        assetInformation[msg.sender] = AssetInformation(msg.sender, asset_desired, asset_deposited, total_asset_value, dip_amount, false);
+        stopOrders.push(AssetInformation(
+          msg.sender,
+          asset_desired,
+          asset_deposited,
+          total_asset_value,
+          dip_amount,
+          false)
+        );
+        emit AssetInformationLoadedEvent(
+          mag.sender,
+          asset_desired,
+          asset_deposited,
+          total_asset_value,
+          dip_amount,
+          false,
+          false
+        );
+      }
 
     //Called by Chainlink Keepers to check if work needs to be done
     function checkUpkeep(
         bytes calldata /*checkData */
     ) external override returns (bool upkeepNeeded, bytes memory) {
         upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
-        // TODO: Add condition to check if asset value < dip_amount (call getLatestPrice)
+        
 
         if(checkStop()) {
             return(true);
@@ -407,15 +462,21 @@ contract StopLoss is KeeperCompatibleInterface {
         } else {
             return(false);
         }
-
-
-
     }
 
    //Called by Chainlink Keepers to handle work
     function performUpkeep(bytes calldata) external override {
         lastTimeStamp = block.timestamp;
-        // TODO: Swap if returned True from checkUpKeep.
+        
+        if (checkStop()) {
+          upkeepStop();
+        }
+
+        if (checkLimit()) {
+          upkeepLimit();
+        }
+
+
     }
 
     // Testing needed 
@@ -509,29 +570,39 @@ contract StopLoss is KeeperCompatibleInterface {
         lendingPool.withdraw(assetToWithdraw, _amt, recipient);
     }
 
-    function swap(address _tokenIn, address _tokenOut, uint256 _amountIn, uint256 _amountOutMin, address _to) internal {
+    function swap(
+      address _tokenIn, 
+      address _tokenOut, 
+      uint256 _amountIn, 
+      uint256 _amountOutMin, 
+      address _to
+      ) internal {
     // Approve the the Rinkeby Uniswap v2 Router to spend the coins that are held by the smart contract 
-    IERC20(_tokenIn).approve(dexRouter, _amountIn);
-    
-    // Logic for the optimal path of the swap
-    address[] memory path;
-        if (_tokenIn == wETH || _tokenOut == wETH) {
-        path = new address[](2);
-        path[0] = _tokenIn;
-        path[1] = _tokenOut;
-        } else {
-        path = new address[](3);
-        path[0] = _tokenIn;
-        path[1] = wETH;
-        path[2] = _tokenOut;
-        }
+      IERC20(_tokenIn).approve(dexRouter, _amountIn);
+      
+      // Logic for the optimal path of the swap
+      address[] memory path;
+          if (_tokenIn == wETH || _tokenOut == wETH) {
+          path = new address[](2);
+          path[0] = _tokenIn;
+          path[1] = _tokenOut;
+          } else {
+          path = new address[](3);
+          path[0] = _tokenIn;
+          path[1] = wETH;
+          path[2] = _tokenOut;
+          }
         // Calling the swap function from the uniswap V2 router contract on Rinkeby 
-        IUniswapV2Router(dexRouter).swapExactTokensForTokens(_amountIn, _amountOutMin, path, _to, block.timestamp);
+      IUniswapV2Router(dexRouter).swapExactTokensForTokens(_amountIn, _amountOutMin, path, _to, block.timestamp);
     }
     
 
 
-    function getAmountOutMin(address _tokenIn, address _tokenOut, uint256 _amountIn) external view returns (uint256) {
+    function getAmountOutMin(
+      address _tokenIn, 
+      address _tokenOut, 
+      uint256 _amountIn
+      ) external view returns (uint256) {
         // Logic to get the optimal path for the swap
         address[] memory path;
         if (_tokenIn == wETH || _tokenOut == wETH) {
@@ -548,4 +619,21 @@ contract StopLoss is KeeperCompatibleInterface {
         uint256[] memory amountOutMins = IUniswapV2Router(dexRouter).getAmountsOut(_amountIn, path);
         return amountOutMins[path.length -1];  
     }  
+
+    function withdraw(uint _amt, address _token) external returns(bool) {
+      AssetInformation user = assetInformations[msg.sender];
+      require(user.total_asset_value > _amt);
+      uint newBal = user.total_asset_value - _amt;
+      IERC20 token = IERC20(_token)
+      require(token.transfer(msg.sender, _amt));
+      assetInformations[msg.sender] = AsserInformation(user.Token_onwer, user.)
+
+      // Clean up token deposited / token desired handling of data.
+
+
+    }
+
+
+
+
 }
