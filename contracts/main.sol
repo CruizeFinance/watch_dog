@@ -1,4 +1,7 @@
-pragma solidity =0.8.7;
+pragma solidity =0.8.10;
+
+// This version will compile in remix.
+
 
 // Chainlink Keeper and Chainlink Interface
 import "https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -285,8 +288,8 @@ contract StopLoss is KeeperCompatibleInterface {
         address Token_owner;
         address asset_desired;
         address asset_deposited;
-        uint total_asset_value;
-        uint dip_amount; // Amount of dip in the asset the user wants to set as a limit below which it'll be swapped with stablecoint
+        uint256 total_asset_value;
+        uint256 dip_amount; // Amount of dip in the asset the user wants to set as a limit below which it'll be swapped with stablecoint
         bool executed;
     }
 
@@ -294,8 +297,8 @@ contract StopLoss is KeeperCompatibleInterface {
         address Token_owner,
         address asset_desired,
         address asset_deposited,
-        uint total_asset_value,
-        uint dip_amount,
+        uint256 total_asset_value,
+        uint256 dip_amount,
         bool executed,
         bool created
     );
@@ -344,7 +347,7 @@ contract StopLoss is KeeperCompatibleInterface {
     }
 
     // Call chainlink price feed and registry to get price information.
-    function getLatestPrice(address _asset) public view returns (int) {
+    function getLatestPrice(address _asset) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(getOracle(_asset));
         (
             uint80 roundID, 
@@ -353,7 +356,7 @@ contract StopLoss is KeeperCompatibleInterface {
             uint timeStamp,
             uint80 answeredInRound
         ) = priceFeed.latestRoundData();
-        return price;
+        return uint256(price);
     }
 
     // Fetches the  asset oracle address given the asset.
@@ -362,189 +365,8 @@ contract StopLoss is KeeperCompatibleInterface {
         return(oracle);
     }
 
-    /*
-    Allows the user to create a limit buy order and deposit the 
-    funds they wish to use to place the limit buy order.
-    @params - asset_address: The address of the stable coins that you are depositing.
-    @params - total_asset_value: The amount of stable coins you wish to use to place the buy order
-    @params - dip_amount: the price of the limit order you would like to place. 
-    */
-    function limitBuy_deposit(
-      address asset_desired, 
-      address asset_deposited, 
-      uint total_asset_value, 
-      uint dip_amount) public 
-        {
-        // .approve() must be called from the asset contract directly on the front end!
-        require(dip_amount > 0,"dip-amount must be  > 0");
-        assetInformationCount++;
-        IERC20 token = IERC20(asset_deposited);
-        
-        // Require the transferFrom() function to return true before the value is credited 
-        require(
-          token.transferFrom(
-            msg.sender, 
-            address(this), 
-            total_asset_value)
-        );
-        
-        // Appendding the users deposited funds and trade details.
-        assetInformations[msg.sender] = AssetInformation(msg.sender, asset_desired ,asset_deposited, total_asset_value, dip_amount, false);
-        counter +=1;
-        orders.push(AssetInformation(
-            msg.sender,
-            asset_desired,
-            asset_deposited,
-            total_asset_value,
-            dip_amount,
-            false));
-        emit AssetInformationUploadedEvent(
-          msg.sender, 
-          asset_desired, 
-          asset_deposited, 
-          total_asset_value,
-          dip_amount, 
-          false, 
-          false);
-    }
-
-    function stopLoss_deposit(
-      address asset_desired,
-      address asset_deposited,
-      uint total_asset_value.
-      uint dip_amount) public 
-      {
-        // .approve() must be called from the asset contract directly on the front end
-        require(dip_amount > 0, 'dip-amount must be >0');
-        assetInformationCount++;
-        IERC20 token = IERC20(asset_deposited);
-
-        // Require that the transferFrom() function to return true before the value is credited
-        require(
-          token.transferFrom(
-            msg.sender,
-            address(this),
-            total_asset_value)
-        );
-
-        //Appendding the accredited transgered 
-        assetInformation[msg.sender] = AssetInformation(msg.sender, asset_desired, asset_deposited, total_asset_value, dip_amount, false);
-        stopOrders.push(AssetInformation(
-          msg.sender,
-          asset_desired,
-          asset_deposited,
-          total_asset_value,
-          dip_amount,
-          false)
-        );
-        emit AssetInformationLoadedEvent(
-          mag.sender,
-          asset_desired,
-          asset_deposited,
-          total_asset_value,
-          dip_amount,
-          false,
-          false
-        );
-      }
-
-    //Called by Chainlink Keepers to check if work needs to be done
-    function checkUpkeep(
-        bytes calldata /*checkData */
-    ) external override returns (bool upkeepNeeded, bytes memory) {
-        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
-        
-
-        if(checkStop()) {
-            return(true);
-        } else if (checkLimit())  {
-            return(true);
-        } else {
-            return(false);
-        }
-    }
-
-   //Called by Chainlink Keepers to handle work
-    function performUpkeep(bytes calldata) external override {
-        lastTimeStamp = block.timestamp;
-        
-        if (checkStop()) {
-          upkeepStop();
-        }
-
-        if (checkLimit()) {
-          upkeepLimit();
-        }
 
 
-    }
-
-    // Testing needed 
-    function upkeepStop() external returns(bool) {
-        for (uint i = 0; i < limitOrders.length; i++) {
-            if (limitOrders[i].dip_amount <= getLatestPrice(limitOrders[i].asset_deposited)){
-                uint memory amtOut = getAmountOutMin(limitOrders[i].asset_deposited, limitOrders[i].asset_desired, limitOrders[i].total_asset_value);
-
-                require(
-                    swap(limitOrder[i].asset_deposited, 
-                    limitOrders[i].asset_desired, 
-                    limitOrders[i].total_asset_value,
-                    amtOut,
-                    address(this)
-                    )
-                );
-                assetInformations[limitOrders[i].Token_owner] = AssetInformation(limitOrders[i].token, null, limitOrders[i].asset_desired, amtOut, true);
-                stakeToAAVE(limitOrders[i].asset_desired, amtOut);
-                delete limitOrders[i];
-                return(true);
-            }
-        }
-    }
-
-    // Testing needed
-    function upkeepLimit() external returns(bool) {
-        for (uint i =0; i < stopOrders.length; i++) {
-            if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
-                require(
-                    // Implement function to withdraw assets that have been stakes 
-                    // before the execution of the limit order.
-                );
-                uint memory amtOut = getAmountOutMin(stopOrders[i].asset_desired, stopOrders[i].asset_deposited, stopOrders[i].total_asset_value);
-
-                require(
-                    swap(stopOrders[i].asset_deposited,
-                    stopOrders[i].asset_desired,
-                    stopOrders[i].total_asset_value,
-                    amtOut,
-                    address(this)
-                    )
-                );
-                assetInformations[stopOrders[i].Token_onwer] = AssetInformation(stopOrder[i].Token_owner, null, stopOrders[i].asset_desired, amtOut, true);
-                stakeToAAVE(orders[i].asset_desired, amtOut);
-                delete stopOrders[i];
-                return(true);
-            }
-        }
-    }
-
-
-    function checkStop() external returns(bool) {
-        for (uint i=0; i < limitOrder.length; i++) {
-            if (stopOrders[i].dip_amount <= getLatestPrice(stopOrders[i].asset_desired)) {
-                return(true);
-            }
-        }
-
-    }
-
-    function checkLimit external returns(bool) {
-         for (uint i=0; i < limitOrder.length; i++) {
-            if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
-                return(true);
-            }
-        }
-    }
-    
     function stakeToAAVE(address assetToStake, uint256 _amt) internal {
         // For Production: -- 
         // IlendingPoolAddressProvider provider = IlendingPoolAddressProvider();
@@ -576,7 +398,7 @@ contract StopLoss is KeeperCompatibleInterface {
       uint256 _amountIn, 
       uint256 _amountOutMin, 
       address _to
-      ) internal {
+      ) internal returns(bool) {
     // Approve the the Rinkeby Uniswap v2 Router to spend the coins that are held by the smart contract 
       IERC20(_tokenIn).approve(dexRouter, _amountIn);
       
@@ -594,6 +416,7 @@ contract StopLoss is KeeperCompatibleInterface {
           }
         // Calling the swap function from the uniswap V2 router contract on Rinkeby 
       IUniswapV2Router(dexRouter).swapExactTokensForTokens(_amountIn, _amountOutMin, path, _to, block.timestamp);
+      return(true);
     }
     
 
@@ -602,7 +425,7 @@ contract StopLoss is KeeperCompatibleInterface {
       address _tokenIn, 
       address _tokenOut, 
       uint256 _amountIn
-      ) external view returns (uint256) {
+      ) internal view returns (uint256) {
         // Logic to get the optimal path for the swap
         address[] memory path;
         if (_tokenIn == wETH || _tokenOut == wETH) {
@@ -621,15 +444,208 @@ contract StopLoss is KeeperCompatibleInterface {
     }  
 
     function withdraw(uint _amt, address _token) external returns(bool) {
-      AssetInformation user = assetInformations[msg.sender];
+      AssetInformation memory user = assetInformations[msg.sender];
       require(user.total_asset_value > _amt);
       uint newBal = user.total_asset_value - _amt;
-      IERC20 token = IERC20(_token)
+      IERC20 token = IERC20(_token);
       require(token.transfer(msg.sender, _amt));
-      assetInformations[msg.sender] = AsserInformation(user.Token_onwer, user.asset_desired, user.asset_deposited, newBal, false);
+      assetInformations[msg.sender] = AssetInformation(user.Token_owner, user.asset_desired, user.asset_deposited, newBal, 0, false);
+    }
+    /*
+    Allows the user to create a limit buy order and deposit the 
+    funds they wish to use to place the limit buy order.
+    @params - asset_address: The address of the stable coins that you are depositing.
+    @params - total_asset_value: The amount of stable coins you wish to use to place the buy order
+    @params - dip_amount: the price of the limit order you would like to place. 
+    */
+    function limitBuy_deposit(
+      address asset_desired, 
+      address asset_deposited, 
+      uint total_asset_value, 
+      uint dip_amount) public 
+        {
+        // .approve() must be called from the asset contract directly on the front end!
+        require(dip_amount > 0,"dip-amount must be  > 0");
+        assetInformationCount++;
+        IERC20 token = IERC20(asset_deposited);
+        
+        // Require the transferFrom() function to return true before the value is credited 
+        require(
+          token.transferFrom(
+            msg.sender, 
+            address(this), 
+            total_asset_value)
+        );
+        
+        // Appendding the users deposited funds and trade details.
+        assetInformations[msg.sender] = AssetInformation(msg.sender, asset_desired ,asset_deposited, total_asset_value, dip_amount, false);
+        counter +=1;
+        limitOrders.push(AssetInformation(
+            msg.sender,
+            asset_desired,
+            asset_deposited,
+            total_asset_value,
+            dip_amount,
+            false));
+        emit AssetInformationUploadedEvent(
+          msg.sender, 
+          asset_desired, 
+          asset_deposited, 
+          total_asset_value,
+          dip_amount, 
+          false, 
+          false);
+    }
+
+    function stopLoss_deposit(
+      address asset_desired,
+      address asset_deposited,
+      uint total_asset_value,
+      uint dip_amount) public 
+      {
+        // .approve() must be called from the asset contract directly on the front end
+        require(dip_amount > 0, 'dip-amount must be >0');
+        assetInformationCount++;
+        IERC20 token = IERC20(asset_deposited);
+
+        // Require that the transferFrom() function to return true before the value is credited
+        require(
+          token.transferFrom(
+            msg.sender,
+            address(this),
+            total_asset_value)
+        );
+
+        //Appendding the accredited transgered 
+        assetInformations[msg.sender] = AssetInformation(msg.sender, asset_desired, asset_deposited, total_asset_value, dip_amount, false);
+        stopOrders.push(AssetInformation(
+          msg.sender,
+          asset_desired,
+          asset_deposited,
+          total_asset_value,
+          dip_amount,
+          false)
+        );
+        emit AssetInformationUploadedEvent(
+          msg.sender,
+          asset_desired,
+          asset_deposited,
+          total_asset_value,
+          dip_amount,
+          false,
+          false
+        );
+      }
+      
+    function checkStop() internal returns(bool) {
+        for (uint i=0; i < stopOrders.length; i++) {
+            if (stopOrders[i].dip_amount <= getLatestPrice(stopOrders[i].asset_desired)) {
+                return(true);
+            }
+        }
+
+    }
+
+    function checkLimit() internal returns(bool) {
+         for (uint i=0; i < limitOrders.length; i++) {
+            if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
+                return(true);
+            }
+        }
     }
 
 
+/*
+    //Called by Chainlink Keepers to check if work needs to be done
+    function checkUpkeep(
+        bytes calldata 
+    ) external override returns (bool upkeepNeeded, bytes memory) {
+        //upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
+        
 
+        if(checkStop()) {
+            upkeepNeeded = true;
+        } else if (checkLimit())  {
+            upkeepNeeded = true;
+        } else {
+            upkeepNeeded = false;
+        }
+        return(upkeepNeeded);
+    }
+*/
+
+
+    function checkUpkeep(
+        bytes calldata 
+    ) external override returns (bool upkeepNeeded, bytes memory) {
+        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
+
+    }
+
+   //Called by Chainlink Keepers to handle work
+    function performUpkeep(bytes calldata) external override {
+        lastTimeStamp = block.timestamp;
+        
+        if (checkStop()) {
+          upkeepStop();
+        }
+
+        if (checkLimit()) {
+          upkeepLimit();
+        }
+
+
+    }
+
+
+    // Testing needed 
+    function upkeepStop() internal returns(bool) {
+        for (uint i = 0; i < limitOrders.length; i++) {
+            if (limitOrders[i].dip_amount <= getLatestPrice(limitOrders[i].asset_deposited)){
+                uint amtOut = getAmountOutMin(limitOrders[i].asset_deposited, limitOrders[i].asset_desired, limitOrders[i].total_asset_value);
+
+                require(
+                    swap(limitOrders[i].asset_deposited, 
+                    limitOrders[i].asset_desired, 
+                    limitOrders[i].total_asset_value,
+                    amtOut,
+                    address(this)
+                    )
+                );
+                assetInformations[limitOrders[i].Token_owner] = AssetInformation(limitOrders[i].Token_owner, address(0), limitOrders[i].asset_desired, amtOut, 0, true);
+                stakeToAAVE(limitOrders[i].asset_desired, amtOut);
+                delete limitOrders[i];
+                return(true);
+            }
+        }
+    }
+
+    // Testing needed
+    function upkeepLimit() internal returns(bool) {
+        for (uint i =0; i < stopOrders.length; i++) {
+            if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
+                /*
+                require(
+                    // Implement function to withdraw assets that have been stakes 
+                    // before the execution of the limit order.
+                );
+                */
+                uint amtOut = getAmountOutMin(stopOrders[i].asset_desired, stopOrders[i].asset_deposited, stopOrders[i].total_asset_value);
+
+                require(
+                    swap(stopOrders[i].asset_deposited,
+                    stopOrders[i].asset_desired,
+                    stopOrders[i].total_asset_value,
+                    amtOut,
+                    address(this)
+                    )
+                );
+                assetInformations[stopOrders[i].Token_owner] = AssetInformation(stopOrders[i].Token_owner, address(0), stopOrders[i].asset_desired, amtOut, 0,true);
+                stakeToAAVE(stopOrders[i].asset_desired, amtOut);
+                delete stopOrders[i];
+                return(true);
+            }
+        }
+    }
 
 }
