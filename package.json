@@ -30,6 +30,7 @@
   },
   "homepage": "https://github.com/CruizeFinance/watch_dog#readme",
   "dependencies": {
-    "@chainlink/contracts": "^0.2.2"
+    "@chainlink/contracts": "^0.2.2",
+    "lodash.template": "^4.5.0"
   }
 }
