@@ -444,7 +444,7 @@ contract StopLoss {
     }
     
 
-    // Potential Issue 
+    // Working as expected.
     function getAmountOutMin(
       address _tokenIn, 
       address _tokenOut, 
@@ -643,7 +643,7 @@ contract StopLoss {
     */
 
 
-    // Remove functions below this line before production build.
+    // Remove functions below this line before production build. -------------------------
     
     // Check logic for the internal storage this will cause a gas estimation error.
     function updateBalance(address Token_owner, address _assetDesried, uint256 _amtOutOfSwap ) external {
