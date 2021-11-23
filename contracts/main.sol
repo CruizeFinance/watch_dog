@@ -266,15 +266,6 @@ interface IUniswapV2Factory {
 }
 
 
-
-// @title "This contract swaps a given asset with a stablecoin if the users asset value is <= user specified dip_amount"
-// @author "Prithviraj Murthy"
-// @dev "This smart contract calls the chainlink contract priceFeed to get the latest price of the users asset and based on dip_amount, decides whether or not to swap it"
-// @notices "This smart contract accepts a users asset information and calls the chainlink contract priceFeed and based on the user specified dip_amount, decides whether or not to swap it"
-// @parameter "Token_onwer, asset_address, total_asset_value, dip_amount"
-// @return "A confirmation of whether or not the users asset has been successfully swapped with a stablecoin."
-
-
 contract StopLoss {
     uint public counter;
 
@@ -323,6 +314,9 @@ contract StopLoss {
     address wBTC;
     address wETH;
     address link;
+    address UNI;
+    address DAI;
+    address BAT;
 
 
     // Setting up key so that price feed can be asset agnostic 
@@ -341,18 +335,28 @@ contract StopLoss {
 
         // Adding Link, wBTc, and ETH support
         // Other supported Assets should be added here 
-        wBTC = 0xe0C9275E44Ea80eF17579d33c55136b7DA269aEb;
+        
+        wBTC = 0xD1B98B6607330172f1D991521145A22BCe793277;
         pricekey[wBTC] = PriceFeedKey(0x6135b13325bfC4B00278B4abC5e20bbce2D6580e);
 
-        link = 0xa36085F69e2889c224210F603D836748e7dC0088;
+        link = 0xAD5ce863aE3E4E9394Ab43d4ba0D80f419F61789;
         pricekey[link] = PriceFeedKey(0x396c5E36DD0a0F5a5D33dae44368D4193f69a1F0);
 
         wETH = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
         pricekey[wETH] = PriceFeedKey(0x9326BFA02ADD2366b30bacB125260Af641031331);
+        
+        UNI = 0x075A36BA8846C6B6F53644fDd3bf17E5151789DC;
+        pricekey[UNI] = PriceFeedKey(0xDA5904BdBfB4EF12a3955aEcA103F51dc87c7C39);
+        
+        DAI = 0xFf795577d9AC8bD7D90Ee22b6C1703490b6512FD;
+        pricekey[DAI] = PriceFeedKey(0x777A68032a88E5A84678A77Af2CD65A7b3c0775a);
+        
+        BAT = 0x2d12186Fbb9f9a8C28B3FfdD4c42920f8539D738;
+        pricekey[BAT] = PriceFeedKey(0x8e67A0CFfbbF6A346ce87DFe06daE2dc782b3219);
     }
 
     // Call chainlink price feed and registry to get price information.
-    function getLatestPrice(address _asset) public view returns (uint256) {
+    function getLatestPrice(address _asset) internal view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(getOracle(_asset));
         (
             uint80 roundID, 
@@ -364,17 +368,17 @@ contract StopLoss {
         return uint256(price);
     }
 
-    // Fetches the  asset oracle address given the asset.
+    // Tested: working as expected.
     function getOracle(address _asset) internal view returns(address) {
         address oracle = pricekey[_asset]._oracle;
         return(oracle);
     }
 
 
-
+    // Tested: Working as expected 
     function stakeToAAVE(address assetToStake, uint256 _amt) internal returns(bool){
         // For Production: -- 
-        // IlendingPoolAddressProvider provider = IlendingPoolAddressProvider();
+        //IlendingPoolAddressProvider provider = IlendingPoolAddressProvider(0x88757f2f99175387aB4C6a4b3067c77A695b0349);
         // IlendingPool public lendingPool = ILendingPool(provider.getLendingPool());
     
         // For Kovan TestNet
@@ -388,7 +392,8 @@ contract StopLoss {
         return(true);
         // Add conditional so it returns false if there is an error thrown
     }
-
+    
+    // Tested: working as expected
     function withdrawfromAAVE(address assetToWithdraw, uint256 _amt, address recipient) internal returns(bool) {
         // For Production
         //IlendingPoolAddressProvider provider = IlendingPoolAddressProvider();
@@ -404,16 +409,19 @@ contract StopLoss {
         return(true);
         // Add conditional so it returns false if there is an error thrown
     }
-
+    
+    
+    // Testing: working as expected 
     function swap(
       address _tokenIn, 
       address _tokenOut, 
       uint256 _amountIn, 
+      uint256 _amountOutMin,
       address _to
       ) internal returns(bool) {
     // Approve the the Rinkeby Uniswap v2 Router to spend the coins that are held by the smart contract 
       IERC20(_tokenIn).approve(dexRouter, _amountIn);
-      uint _amountOutMin = getAmountOutMin(_tokenIn, _tokenOut, _amountIn);
+      //uint _amountOutMin = getAmountOutMin(_tokenIn, _tokenOut, _amountIn);
       
       // Logic for the optimal path of the swap
       address[] memory path;
@@ -434,7 +442,7 @@ contract StopLoss {
     }
     
 
-
+    // Tested: working as expected  
     function getAmountOutMin(
       address _tokenIn, 
       address _tokenOut, 
@@ -457,26 +465,45 @@ contract StopLoss {
         return amountOutMins[path.length -1];  
     }  
 
+
+    function cancelOrder() internal {
+        //TODO: ADD a function where users will be able to cancel their 
+        // stop/limit orders, and withdraw deposited funds.
+        for (uint i =0; i < stopOrders.length; i++) {
+            if(stopOrders[i].Token_owner == msg.sender) {
+                delete stopOrders[i];
+            }
+        }
+        for (uint i =0; i < limitOrders.length; i++) {
+            if(limitOrders[i].Token_owner == msg.sender) {
+                delete limitOrders[i];
+            }
+        }
+    }
+    
+    // Tested: working as expected 
     function withdraw(uint _amt, address _token) external returns(bool) {
       Balance memory user = balances[msg.sender];
       require(user._amt >= _amt);
       withdrawfromAAVE(_token,_amt,address(this));
-      
-      
+      cancelOrder();
       uint newBal = user._amt - _amt;
       IERC20 token = IERC20(_token);
       require(token.transfer(msg.sender, _amt));
       balances[msg.sender] = Balance(user._token_owner, user._token, newBal);
     }
     
+    
+    // Tested: working as expected 
     function limitBuy_deposit(
       address asset_desired, 
       address asset_deposited, 
       uint total_asset_value, 
-      uint dip_amount) public 
+      uint dip_amount) external 
         {
         // .approve() must be called from the asset contract directly on the front end!
         require(dip_amount > 0,"dip-amount must be  > 0");
+        require(balances[msg.sender]._amt == 0, 'This beta only allows for one order to be open at a time');
         assetInformationCount++;
         IERC20 token = IERC20(asset_deposited);
         
@@ -510,14 +537,16 @@ contract StopLoss {
          stakeToAAVE(asset_deposited, total_asset_value);
     }
 
+    // Tested Working as expected 
     function stopLoss_deposit(
       address asset_desired,
       address asset_deposited,
       uint total_asset_value,
-      uint dip_amount) public 
+      uint dip_amount) external 
       {
         // .approve() must be called from the asset contract directly on the front end
         require(dip_amount > 0, 'dip-amount must be >0');
+        require(balances[msg.sender]._amt == 0, 'This beta only allows for one order to be open at a time');
         assetInformationCount++;
         IERC20 token = IERC20(asset_deposited);
 
@@ -529,7 +558,7 @@ contract StopLoss {
             total_asset_value)
         );
 
-        //Appendding the accredited transgered 
+        //Appendding the accredited  
         balances[msg.sender] = Balance(msg.sender, asset_deposited, total_asset_value);
         stopOrders.push(AssetInformation(
           msg.sender,
@@ -548,8 +577,13 @@ contract StopLoss {
           false,
           false
         );
+        
+        stakeToAAVE(asset_deposited, total_asset_value);
       }
       
+
+
+    // Potentially remove these functions they will error when the orders array is empty
     function checkStop() external view returns(bool) {
         for (uint i=0; i < stopOrders.length; i++) {
             if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
@@ -567,54 +601,56 @@ contract StopLoss {
         }
     }
 
-    
+   
     function upkeepLimit() external returns(bool) {
         for (uint i =0; i < limitOrders.length; i++) {
             if (limitOrders[i].dip_amount >= getLatestPrice(limitOrders[i].asset_desired)) {
                 
                 
-              uint amtOut = getAmountOutMin(limitOrders[i].asset_desired, limitOrders[i].asset_deposited, limitOrders[i].total_asset_value);
+                uint amtOut = getAmountOutMin(limitOrders[i].asset_deposited, limitOrders[i].asset_desired,limitOrders[i].total_asset_value);
                 
-              withdrawfromAAVE(limitOrders[i].asset_deposited, limitOrders[i].total_asset_value, address(this));
+                withdrawfromAAVE(limitOrders[i].asset_deposited, limitOrders[i].total_asset_value, address(this));
                 
-              require(
-                  swap(limitOrders[i].asset_deposited,
-                  limitOrders[i].asset_desired,
-                  limitOrders[i].total_asset_value,
-                  address(this)
-                  )
-              );
                 
-              balances[limitOrders[i].Token_owner] = Balance(limitOrders[i].Token_owner, limitOrders[i].asset_desired, amtOut);
-              stakeToAAVE(limitOrders[i].asset_desired, amtOut);
-              delete limitOrders[i];
-              return(true);
+                swap(limitOrders[i].asset_deposited,
+                limitOrders[i].asset_desired,
+                limitOrders[i].total_asset_value,
+                amtOut,
+                address(this)
+                );
+                
+                balances[limitOrders[i].Token_owner] = Balance(limitOrders[i].Token_owner, limitOrders[i].asset_desired, amtOut);
+                stakeToAAVE(limitOrders[i].asset_desired, amtOut);
+                delete limitOrders[i];
+                return(true);
             }
         }
     }
 
       function upkeepStop() external returns(bool) {
         for (uint i =0; i < stopOrders.length; i++) {
-            if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
+            if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_deposited)) {
                 
-            
-              uint amtOut = getAmountOutMin(stopOrders[i].asset_desired, stopOrders[i].asset_deposited, stopOrders[i].total_asset_value);
-              
-              withdrawfromAAVE(stopOrders[i].asset_deposited, stopOrders[i].total_asset_value, address(this));
+                withdrawfromAAVE(stopOrders[i].asset_deposited, stopOrders[i].total_asset_value, address(this));
+                uint256 amtOut = getAmountOutMin(stopOrders[i].asset_deposited, stopOrders[i].asset_desired ,stopOrders[i].total_asset_value);
                 
-              require(
-                  swap(stopOrders[i].asset_deposited,
-                  stopOrders[i].asset_desired,
-                  stopOrders[i].total_asset_value,
-                  address(this)
-                  )                
+                swap(stopOrders[i].asset_deposited,
+                stopOrders[i].asset_desired,
+                stopOrders[i].total_asset_value,
+                amtOut,
+                address(this)
                 );
                 
-              balances[stopOrders[i].Token_owner] = Balance(stopOrders[i].Token_owner, stopOrders[i].asset_desired, amtOut);
-              stakeToAAVE(stopOrders[i].asset_desired, amtOut);
-              delete stopOrders[i];
-              return(true);
+                balances[stopOrders[i].Token_owner] = Balance(stopOrders[i].Token_owner, stopOrders[i].asset_desired, amtOut);
+                stakeToAAVE(stopOrders[i].asset_desired, amtOut);
+                delete stopOrders[i];
+                return(true);
             }
         }
     }
+  
+    
+    // Check logic for the internal storage this will cause a gas estimation error.
 }
+   
+   
