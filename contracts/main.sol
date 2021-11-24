@@ -266,7 +266,7 @@ interface IUniswapV2Factory {
 }
 
 
-contract StopLoss {
+contract StopLoss is KeeperCompatibleInterface {
     uint public counter;
 
     address public dexRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
@@ -326,10 +326,10 @@ contract StopLoss {
     mapping(address => PriceFeedKey) pricekey;
 
     // 
-    constructor() {
+    constructor(uint256 _timeInterval) {
         //priceFeed = AggregatorV3Interface(0x9326BFA02ADD2366b30bacB125260Af641031331);
         admin = msg.sender;
-        interval = 1;
+        interval = _timeInterval;
         lastTimeStamp = block.timestamp;
         counter = 0;
 
@@ -464,7 +464,6 @@ contract StopLoss {
         uint256[] memory amountOutMins = IUniswapV2Router(dexRouter).getAmountsOut(_amountIn, path);
         return amountOutMins[path.length -1];  
     }  
-
 
     function cancelOrder() internal {
         //TODO: ADD a function where users will be able to cancel their 
@@ -602,7 +601,7 @@ contract StopLoss {
     }
 
    
-    function upkeepLimit() external returns(bool) {
+    function upkeepLimit() internal returns(bool) {
         for (uint i =0; i < limitOrders.length; i++) {
             if (limitOrders[i].dip_amount >= getLatestPrice(limitOrders[i].asset_desired)) {
                 
@@ -627,7 +626,7 @@ contract StopLoss {
         }
     }
 
-      function upkeepStop() external returns(bool) {
+      function upkeepStop() internal returns(bool) {
         for (uint i =0; i < stopOrders.length; i++) {
             if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_deposited)) {
                 
@@ -648,7 +647,22 @@ contract StopLoss {
             }
         }
     }
-  
+
+    function checkUpkeep(bytes calldata checkData) external override returns (bool upkeepNeeded, bytes memory performData) {
+        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
+
+        performData = checkData;
+    }
+
+    function performUpkeep(bytes calldata performData) external override {
+      lastTimeStamp = block.timestamp;
+      upkeepLimit();
+      upkeepStop();
+
+      performData;
+    }  
 }
+   
+   
    
    
