@@ -649,8 +649,6 @@ contract StopLoss {
         }
     }
   
-    
-    // Check logic for the internal storage this will cause a gas estimation error.
 }
    
    
