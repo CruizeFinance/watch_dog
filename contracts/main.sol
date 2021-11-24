@@ -326,10 +326,10 @@ contract StopLoss is KeeperCompatibleInterface {
     mapping(address => PriceFeedKey) pricekey;
 
     // 
-    constructor(uint256 _timeInterval) {
+    constructor() {
         //priceFeed = AggregatorV3Interface(0x9326BFA02ADD2366b30bacB125260Af641031331);
         admin = msg.sender;
-        interval = _timeInterval;
+        interval = 30;
         lastTimeStamp = block.timestamp;
         counter = 0;
 
@@ -357,15 +357,19 @@ contract StopLoss is KeeperCompatibleInterface {
 
     // Call chainlink price feed and registry to get price information.
     function getLatestPrice(address _asset) internal view returns (uint256) {
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(getOracle(_asset));
-        (
-            uint80 roundID, 
-            int price,
-            uint startedAt,
-            uint timeStamp,
-            uint80 answeredInRound
-        ) = priceFeed.latestRoundData();
-        return uint256(price);
+        if(_asset == 0x0000000000000000000000000000000000000000) {
+            return uint256(1);
+        } else {
+            AggregatorV3Interface priceFeed = AggregatorV3Interface(getOracle(_asset));
+            (
+                uint80 roundID, 
+                int price,
+                uint startedAt,
+                uint timeStamp,
+                uint80 answeredInRound
+            ) = priceFeed.latestRoundData();
+            return uint256(price);
+        }
     }
 
     // Tested: working as expected.
@@ -585,7 +589,7 @@ contract StopLoss is KeeperCompatibleInterface {
     // Potentially remove these functions they will error when the orders array is empty
     function checkStop() external view returns(bool) {
         for (uint i=0; i < stopOrders.length; i++) {
-            if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
+            if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_deposited)) {
                 return(true);
             }
         }
@@ -662,7 +666,5 @@ contract StopLoss is KeeperCompatibleInterface {
       performData;
     }  
 }
-   
-   
    
    
