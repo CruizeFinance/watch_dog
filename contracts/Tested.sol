@@ -282,11 +282,7 @@ contract StopLoss {
     address private admin;
     
     struct AssetInformation {
-<<<<<<< HEAD
-        address Token_onwer;
-=======
         address Token_owner;
->>>>>>> 97686a4 (Ensure it compiles)
         address asset_desired;
         address asset_deposited;
         uint256 total_asset_value;
@@ -295,11 +291,7 @@ contract StopLoss {
     }
 
     event AssetInformationUploadedEvent(
-<<<<<<< HEAD
-        address Token_onwer,
-=======
         address Token_owner,
->>>>>>> 97686a4 (Ensure it compiles)
         address asset_desired,
         address asset_deposited,
         uint256 total_asset_value,
