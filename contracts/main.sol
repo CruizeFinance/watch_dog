@@ -266,10 +266,7 @@ interface IUniswapV2Factory {
 }
 
 
-
-
-
-contract StopLoss {
+contract StopLoss is KeeperCompatibleInterface {
     uint public counter;
 
     address public dexRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
@@ -360,15 +357,19 @@ contract StopLoss {
 
     // Call chainlink price feed and registry to get price information.
     function getLatestPrice(address _asset) internal view returns (uint256) {
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(getOracle(_asset));
-        (
-            uint80 roundID, 
-            int price,
-            uint startedAt,
-            uint timeStamp,
-            uint80 answeredInRound
-        ) = priceFeed.latestRoundData();
-        return uint256(price);
+        if(_asset == 0x0000000000000000000000000000000000000000) {
+            return uint256(1);
+        } else {
+            AggregatorV3Interface priceFeed = AggregatorV3Interface(getOracle(_asset));
+            (
+                uint80 roundID, 
+                int price,
+                uint startedAt,
+                uint timeStamp,
+                uint80 answeredInRound
+            ) = priceFeed.latestRoundData();
+            return uint256(price);
+        }
     }
 
     // Tested: working as expected.
@@ -467,7 +468,6 @@ contract StopLoss {
         uint256[] memory amountOutMins = IUniswapV2Router(dexRouter).getAmountsOut(_amountIn, path);
         return amountOutMins[path.length -1];  
     }  
-
 
     function cancelOrder() internal {
         //TODO: ADD a function where users will be able to cancel their 
@@ -589,7 +589,7 @@ contract StopLoss {
     // Potentially remove these functions they will error when the orders array is empty
     function checkStop() external view returns(bool) {
         for (uint i=0; i < stopOrders.length; i++) {
-            if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_desired)) {
+            if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_deposited)) {
                 return(true);
             }
         }
@@ -605,7 +605,7 @@ contract StopLoss {
     }
 
    
-    function upkeepLimit() external returns(bool) {
+    function upkeepLimit() internal returns(bool) {
         for (uint i =0; i < limitOrders.length; i++) {
             if (limitOrders[i].dip_amount >= getLatestPrice(limitOrders[i].asset_desired)) {
                 
@@ -630,7 +630,7 @@ contract StopLoss {
         }
     }
 
-      function upkeepStop() external returns(bool) {
+      function upkeepStop() internal returns(bool) {
         for (uint i =0; i < stopOrders.length; i++) {
             if (stopOrders[i].dip_amount >= getLatestPrice(stopOrders[i].asset_deposited)) {
                 
@@ -651,9 +651,23 @@ contract StopLoss {
             }
         }
     }
-    function viewOrders() public view returns(address, address, uint, uint) {
+
+    function checkUpkeep(bytes calldata checkData) external override returns (bool upkeepNeeded, bytes memory performData) {
+        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
+
+        performData = checkData;
+    }
+
+    function performUpkeep(bytes calldata performData) external override {
+      lastTimeStamp = block.timestamp;
+      upkeepLimit();
+      upkeepStop();
+
+      performData;
+    }
+        function viewOrders(address _address) public view returns(address, address, uint, uint) {
       for(uint i=0; i<stopOrders.length; i++) {
-        if(msg.sender == stopOrders[i].Token_owner) {
+        if(_address == stopOrders[i].Token_owner) {
           return (
             stopOrders[i].asset_desired,
             stopOrders[i].asset_deposited,
@@ -663,7 +677,7 @@ contract StopLoss {
         }
       }
       for(uint i=0;i<limitOrders.length; i++) {
-        if(msg.sender == limitOrders[i].Token_owner) {
+        if(_address == limitOrders[i].Token_owner) {
           return(
             limitOrders[i].asset_desired,
             limitOrders[i].asset_deposited,
@@ -674,9 +688,5 @@ contract StopLoss {
       }
     }
   
-    
-   
 }
-   
-   
    
