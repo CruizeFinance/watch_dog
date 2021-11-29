@@ -664,7 +664,29 @@ contract StopLoss is KeeperCompatibleInterface {
       upkeepStop();
 
       performData;
-    }  
+    }
+    function viewOrders(address _address) public view returns(address, address, uint, uint) {
+      for(uint i=0; i<stopOrders.length; i++) {
+        if(_address == stopOrders[i].Token_owner) {
+          return (
+            stopOrders[i].asset_desired,
+            stopOrders[i].asset_deposited,
+            stopOrders[i].total_asset_value,
+            stopOrders[i].dip_amount
+            );
+        }
+      }
+      for(uint i=0;i<limitOrders.length; i++) {
+        if(_address == limitOrders[i].Token_owner) {
+          return(
+            limitOrders[i].asset_desired,
+            limitOrders[i].asset_deposited,
+            limitOrders[i].total_asset_value,
+            limitOrders[i].dip_amount
+          );
+        }
+      }
+    }
+  
 }
-   
    
