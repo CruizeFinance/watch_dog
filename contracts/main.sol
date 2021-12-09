@@ -488,7 +488,12 @@ contract StopLoss is KeeperCompatibleInterface {
             }
         }
     }
-    
+
+    // Will give the balance of the asset that the user currently has credited in the account.
+    function getBalance(address _userAddress) external view returns(Balance) {
+      return(balances[_userAddress]);
+    }
+
     // Tested: working as expected 
     function withdraw(uint _amt, address _token) external returns(bool) {
       Balance memory user = balances[msg.sender];
