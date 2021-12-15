@@ -524,7 +524,7 @@ uint256 length =  assetInformations[msg.sender].length;
         {
         // .approve() must be called from the asset contract directly on the front end!
         require(dip_amount > 0,"dip-amount must be  > 0");
-        require(balances[msg.sender]._amt == 0, 'This beta only allows for one order to be open at a time');
+        // require(balances[msg.sender]._amt == 0, 'This beta only allows for one order to be open at a time');
         assetInformationCount++;
         IERC20 token = IERC20(asset_deposited);
         
