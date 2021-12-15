@@ -502,12 +502,12 @@ uint256 length =  assetInformations[msg.sender].length;
 }
 
     // Will give the balance of the asset that the user currently has credited in the account.
-    function getBalance(address _userAddress) external view returns(Balance) {
-      return(balances[_userAddress]);
-    }
+    // function getBalance(address _userAddress) external view returns(Balance) {
+    //   return(balances[_userAddress]);
+    // }
 
     // Tested: working as expected 
-    function withdraw(uint _amt, address _token) external returns(bool) {
+    function withdraw(uint _amt, address _token ,uint256 index) external returns(bool) {
       withdrawfromAAVE(_token,_amt,address(this));
       cancelOrder(index);
       IERC20 token = IERC20(_token);
@@ -555,48 +555,48 @@ uint256 length =  assetInformations[msg.sender].length;
     }
 
     // Tested Working as expected 
-    function stopLoss_deposit(
-      address asset_desired,
-      address asset_deposited,
-      uint total_asset_value,
-      uint dip_amount) external 
-      {
-        // .approve() must be called from the asset contract directly on the front end
-        require(dip_amount > 0, 'dip-amount must be >0');
-        require(balances[msg.sender]._amt == 0, 'This beta only allows for one order to be open at a time');
-        assetInformationCount++;
-        IERC20 token = IERC20(asset_deposited);
+    // function stopLoss_deposit(
+      // address asset_desired,
+      // address asset_deposited,
+      // uint total_asset_value,
+      // uint dip_amount) external 
+      // {
+      //   // .approve() must be called from the asset contract directly on the front end
+      //   require(dip_amount > 0, 'dip-amount must be >0');
+      //   require(balances[msg.sender]._amt == 0, 'This beta only allows for one order to be open at a time');
+      //   assetInformationCount++;
+      //   IERC20 token = IERC20(asset_deposited);
 
-        // Require that the transferFrom() function to return true before the value is credited
-        require(
-          token.transferFrom(
-            msg.sender,
-            address(this),
-            total_asset_value)
-        );
+      //   // Require that the transferFrom() function to return true before the value is credited
+      //   require(
+      //     token.transferFrom(
+      //       msg.sender,
+      //       address(this),
+      //       total_asset_value)
+      //   );
 
-        //Appendding the accredited  
-        balances[msg.sender] = Balance(msg.sender, asset_deposited, total_asset_value);
-        stopOrders.push(AssetInformation(
-          msg.sender,
-          asset_desired,
-          asset_deposited,
-          total_asset_value,
-          dip_amount,
-          false)
-        );
-        emit AssetInformationUploadedEvent(
-          msg.sender,
-          asset_desired,
-          asset_deposited,
-          total_asset_value,
-          dip_amount,
-          false,
-          false
-        );
+      //   //Appendding the accredited  
+      //   balances[msg.sender] = Balance(msg.sender, asset_deposited, total_asset_value);
+      //   stopOrders.push(AssetInformation(
+      //     msg.sender,
+      //     asset_desired,
+      //     asset_deposited,
+      //     total_asset_value,
+      //     dip_amount,
+      //     false)
+      //   );
+      //   emit AssetInformationUploadedEvent(
+      //     msg.sender,
+      //     asset_desired,
+      //     asset_deposited,
+      //     total_asset_value,
+      //     dip_amount,
+      //     false,
+      //     false
+      //   );
         
-        stakeToAAVE(asset_deposited, total_asset_value);
-      }
+      //   stakeToAAVE(asset_deposited, total_asset_value);
+      // }
       
 
 
