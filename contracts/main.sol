@@ -292,6 +292,7 @@ contract StopLoss is KeeperCompatibleInterface {
         uint256 total_asset_value;
         uint256 dip_amount; // Amount of dip in the asset the user wants to set as a limit below which it'll be swapped with stablecoint
         bool executed;
+         uint256 index;
     }
 
     event AssetInformationUploadedEvent(
@@ -303,7 +304,7 @@ contract StopLoss is KeeperCompatibleInterface {
         bool executed,
         bool created
     );
-    mapping(address => AssetInformation) public assetInformations; 
+    mapping(address => AssetInformation[]) public assetInformations; 
     AssetInformation[] public limitOrders;
     AssetInformation[] public stopOrders;
     
@@ -474,20 +475,31 @@ contract StopLoss is KeeperCompatibleInterface {
         return amountOutMins[path.length -1];  
     }  
 
-    function cancelOrder() internal {
-        //TODO: ADD a function where users will be able to cancel their 
-        // stop/limit orders, and withdraw deposited funds.
-        for (uint i =0; i < stopOrders.length; i++) {
-            if(stopOrders[i].Token_owner == msg.sender) {
-                delete stopOrders[i];
-            }
-        }
-        for (uint i =0; i < limitOrders.length; i++) {
-            if(limitOrders[i].Token_owner == msg.sender) {
-                delete limitOrders[i];
-            }
-        }
-    }
+    // function cancelOrder() internal {
+    //     //TODO: ADD a function where users will be able to cancel their 
+    //     // stop/limit orders, and withdraw deposited funds.
+    //     for (uint i =0; i < stopOrders.length; i++) {
+    //         if(stopOrders[i].Token_owner == msg.sender) {
+    //             delete stopOrders[i];
+    //         }
+    //     }
+    //     for (uint i =0; i < limitOrders.length; i++) {
+    //         if(limitOrders[i].Token_owner == msg.sender) {
+    //             delete limitOrders[i];
+    //         }
+    //     }
+    // }
+
+function cancelOrder(uint256 index)public{
+//      // if you don't care about ordering
+//      // getting how much user have order
+uint256 length =  assetInformations[msg.sender].length;
+// stroing the last order on the index that have to remove
+ assetInformations[msg.sender][index] =  assetInformations[msg.sender][length - 1];
+// removing last order
+ assetInformations[msg.sender].pop();
+ 
+}
 
     // Will give the balance of the asset that the user currently has credited in the account.
     function getBalance(address _userAddress) external view returns(Balance) {
@@ -496,14 +508,10 @@ contract StopLoss is KeeperCompatibleInterface {
 
     // Tested: working as expected 
     function withdraw(uint _amt, address _token) external returns(bool) {
-      Balance memory user = balances[msg.sender];
-      require(user._amt >= _amt);
       withdrawfromAAVE(_token,_amt,address(this));
-      cancelOrder();
-      uint newBal = user._amt - _amt;
+      cancelOrder(index);
       IERC20 token = IERC20(_token);
       require(token.transfer(msg.sender, _amt));
-      balances[msg.sender] = Balance(user._token_owner, user._token, newBal);
     }
     
     
@@ -529,23 +537,19 @@ contract StopLoss is KeeperCompatibleInterface {
         );
         
         // Appendding the users deposited funds and trade details.
-        balances[msg.sender] = Balance(msg.sender ,asset_deposited, total_asset_value);
-        counter +=1;
-        limitOrders.push(AssetInformation(
-            msg.sender,
-            asset_desired,
-            asset_deposited,
-            total_asset_value,
-            dip_amount,
-            false));
-        emit AssetInformationUploadedEvent(
-          msg.sender, 
-          asset_desired, 
-          asset_deposited, 
-          total_asset_value,
-          dip_amount, 
-          false, 
-          false);
+        
+        uint256 order = assetInformations[msg.sender].length;
+     // Appendding the users deposited funds and trade details.
+      assetInformations[msg.sender].push (AssetInformation(
+      msg.sender,
+      asset_desired,
+      asset_deposited,
+      total_asset_value,
+      dip_amount, // Amount of dip in the asset the user wants to set as a limit below which it'll be swapped with stablecoint
+      true,
+      order
+     ));   
+
           
          stakeToAAVE(asset_deposited, total_asset_value);
     }
