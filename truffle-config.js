@@ -35,8 +35,20 @@ module.exports = {
    */
 
   networks: {
+
+    mainnet_fork: {
+      host: "127.0.0.1",
+      port: 7545,
+      netowork_id: "(999)",
+
+    },
+    test: {
+      host: "127.0.0.1",
+      port: 7545,
+      network_id: "*"
+    },
     // Useful for testing. The `development` name is special - truffle uses it by default
-    // if it's defined here and no other network is specified at the command line.
+    // if it's defined heSre and no other network is specified at the command line.
     // You should run a client (like ganache-cli, geth or parity) in a separate terminal
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
@@ -71,6 +83,8 @@ module.exports = {
     // network_id: 2111,   // This network is yours, in the cloud.
     // production: true    // Treats this network as if it was a public net. (default: false)
     // }
+
+
   },
 
   // Set default mocha options here, use special reporters etc.

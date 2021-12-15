@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: MIT
 pragma solidity =0.8.10;
+
+// Developed for ETH mainnet
 
 import "./interfaces/KeeperCompatibleInterface.sol";
 import "./interfaces/FeedRegistryInterface.sol";
@@ -11,7 +14,7 @@ import "./interfaces/IERC20.sol";
 
 
 
-contract StopLoss is KeeperCompatibleInterface {
+contract Main is KeeperCompatibleInterface {
     uint public counter;
 
     address public dexRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
@@ -43,6 +46,7 @@ contract StopLoss is KeeperCompatibleInterface {
         bool executed,
         bool created
     );
+
     mapping(address => AssetInformation) public assetInformations; 
     AssetInformation[] public limitOrders;
     AssetInformation[] public stopOrders;
@@ -56,12 +60,12 @@ contract StopLoss is KeeperCompatibleInterface {
     //Last price check time
     uint256 public lastTimeStamp;
     
-    address wBTC;
-    address wETH;
-    address link;
-    address UNI;
-    address DAI;
-    address BAT;
+    address public immutable wBTC;
+    address public immutable wETH;
+    address public immutable link;
+    address public immutable UNI;
+    address public immutable DAI;
+    address public immutable BAT;
 
 
     // Setting up key so that price feed can be asset agnostic 
@@ -71,9 +75,11 @@ contract StopLoss is KeeperCompatibleInterface {
     mapping(address => PriceFeedKey) pricekey;
 
     // 
-    constructor() {
+    constructor(
+      address _admin
+    ) {
         //priceFeed = AggregatorV3Interface(0x9326BFA02ADD2366b30bacB125260Af641031331);
-        admin = msg.sender;
+        admin = _admin;
         interval = 30;
         lastTimeStamp = block.timestamp;
         counter = 0;
@@ -81,37 +87,37 @@ contract StopLoss is KeeperCompatibleInterface {
         // Adding Link, wBTc, and ETH support
         // Other supported Assets should be added here 
         
-        wBTC = 0xD1B98B6607330172f1D991521145A22BCe793277;
-        pricekey[wBTC] = PriceFeedKey(0x6135b13325bfC4B00278B4abC5e20bbce2D6580e);
+        wBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+        pricekey[wBTC] = PriceFeedKey(0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
 
-        link = 0xAD5ce863aE3E4E9394Ab43d4ba0D80f419F61789;
-        pricekey[link] = PriceFeedKey(0x396c5E36DD0a0F5a5D33dae44368D4193f69a1F0);
+        link = 0x514910771AF9Ca656af840dff83E8264EcF986CA;
+        pricekey[link] = PriceFeedKey(0x2c1d072e956AFFC0D435Cb7AC38EF18d24d9127c);
 
-        wETH = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
-        pricekey[wETH] = PriceFeedKey(0x9326BFA02ADD2366b30bacB125260Af641031331);
+        wETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+        pricekey[wETH] = PriceFeedKey(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
         
-        UNI = 0x075A36BA8846C6B6F53644fDd3bf17E5151789DC;
-        pricekey[UNI] = PriceFeedKey(0xDA5904BdBfB4EF12a3955aEcA103F51dc87c7C39);
+        UNI = 0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984;
+        pricekey[UNI] = PriceFeedKey(0x553303d460EE0afB37EdFf9bE42922D8FF63220e);
         
-        DAI = 0xFf795577d9AC8bD7D90Ee22b6C1703490b6512FD;
-        pricekey[DAI] = PriceFeedKey(0x777A68032a88E5A84678A77Af2CD65A7b3c0775a);
+        DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+        pricekey[DAI] = PriceFeedKey(0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9);
         
-        BAT = 0x2d12186Fbb9f9a8C28B3FfdD4c42920f8539D738;
-        pricekey[BAT] = PriceFeedKey(0x8e67A0CFfbbF6A346ce87DFe06daE2dc782b3219);
+        BAT = 0x0D8775F648430679A709E98d2b0Cb6250d2887EF;
+        pricekey[BAT] = PriceFeedKey(0x0d16d4528239e9ee52fa531af613AcdB23D88c94);
     }
 
     // Call chainlink price feed and registry to get price information.
-    function getLatestPrice(address _asset) internal view returns (uint256) {
+    function getLatestPrice(address _asset) public view returns (uint256) {
         if(_asset == 0x0000000000000000000000000000000000000000) {
             return uint256(1);
         } else {
             AggregatorV3Interface priceFeed = AggregatorV3Interface(getOracle(_asset));
             (
-                uint80 roundID, 
+                , 
                 int price,
-                uint startedAt,
-                uint timeStamp,
-                uint80 answeredInRound
+                ,
+                ,
+                
             ) = priceFeed.latestRoundData();
             return uint256(price);
         }
@@ -126,14 +132,10 @@ contract StopLoss is KeeperCompatibleInterface {
 
     // Tested: Working as expected 
     function stakeToAAVE(address assetToStake, uint256 _amt) internal returns(bool){
-        // For Production: -- 
-        //IlendingPoolAddressProvider provider = IlendingPoolAddressProvider(0x88757f2f99175387aB4C6a4b3067c77A695b0349);
-        // IlendingPool public lendingPool = ILendingPool(provider.getLendingPool());
-    
-        // For Kovan TestNet
+        // For MainNet
         IERC20 token = IERC20(assetToStake);
-        ILendingPool lendingPool = ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
-        token.approve(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe, _amt);
+        ILendingPool lendingPool = ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
+        token.approve(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9, _amt);
         uint16 referral = 0;
         lendingPool.deposit(address(token), _amt, address(this), referral);
         
@@ -144,12 +146,8 @@ contract StopLoss is KeeperCompatibleInterface {
     
     // Tested: working as expected
     function withdrawfromAAVE(address assetToWithdraw, uint256 _amt, address recipient) internal returns(bool) {
-        // For Production
-        //IlendingPoolAddressProvider provider = IlendingPoolAddressProvider();
-        //IlendingPool public lendingPool = ILendingPool(provider.getLendingPool());
-
         // For Testing not for Production
-        ILendingPool lendingPool = ILendingPool(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe);
+        ILendingPool lendingPool = ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
         
         // For production
         lendingPool.withdraw(assetToWithdraw, _amt, recipient);
@@ -352,7 +350,7 @@ contract StopLoss is KeeperCompatibleInterface {
     }
 
    
-    function upkeepLimit() internal returns(bool) {
+    function upkeepLimit() public returns(bool) {
         for (uint i =0; i < limitOrders.length; i++) {
             if (limitOrders[i].dip_amount >= getLatestPrice(limitOrders[i].asset_desired)) {
                 
