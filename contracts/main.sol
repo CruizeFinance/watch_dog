@@ -383,6 +383,45 @@ contract StopLoss is KeeperCompatibleInterface {
         return(oracle);
     }
 
+    function getAPY() external view returns(int) {
+      int RAY = 10**27; // 10 to the power 27
+      int SECONDS_PER_YEAR = 31536000;
+      int liquidityRate = 10;
+      int variableBorrowRate = 20;
+      // Deposit and Borrow calculations
+      // APY and APR are returned here as decimals, multiply by 100 to get the percents
+
+      int depositAPR = liquidityRate/RAY;
+      int variableBorrowAPR = variableBorrowRate/RAY;
+      int stableBorrowAPR = variableBorrowRate/RAY;
+
+      int depositAPY = ((1 + (depositAPR / SECONDS_PER_YEAR)) ^ SECONDS_PER_YEAR) - 1;
+      int variableBorrowAPY = ((1 + (variableBorrowAPR / SECONDS_PER_YEAR)) ^ SECONDS_PER_YEAR) - 1;
+      int stableBorrowAPY = ((1 + (stableBorrowAPR / SECONDS_PER_YEAR)) ^ SECONDS_PER_YEAR) - 1;
+
+      // Incentives calculation
+      int aEmissionPerSecond = 10;
+      int vEmissionPerSecond = 20;
+      int aEmissionPerYear = aEmissionPerSecond * SECONDS_PER_YEAR;
+      int vEmissionPerYear = vEmissionPerSecond * SECONDS_PER_YEAR;
+
+      int WEI_DECIMALS = 10**18; // All emissions are in wei units, 18 decimal places
+
+      // UNDERLYING_TOKEN_DECIMALS will be the decimals of token underlying the aToken or debtToken
+      // For Example, UNDERLYING_TOKEN_DECIMALS for aUSDC will be 10**6 because USDC has 6 decimals
+      int REWARD_PRICE_ETH = 1;
+      int TOKEN_PRICE_ETH = 2;
+      int totalATokenSupply = 1000000000;
+      int UNDERLYING_TOKEN_DECIMALS = 1;
+      int totalCurrentVariableDebt = 1;
+      int incentiveDepositAPRPercent = 100 * (aEmissionPerYear * REWARD_PRICE_ETH * WEI_DECIMALS)/
+                                (totalATokenSupply * TOKEN_PRICE_ETH * UNDERLYING_TOKEN_DECIMALS);
+                                
+      int incentiveBorrowAPRPercent = 100 * (vEmissionPerYear * REWARD_PRICE_ETH * WEI_DECIMALS)/
+                                (totalCurrentVariableDebt * TOKEN_PRICE_ETH * UNDERLYING_TOKEN_DECIMALS);
+
+      return incentiveDepositAPRPercent;
+    }
 
     // Tested: Working as expected 
     function stakeToAAVE(address assetToStake, uint256 _amt) internal returns(bool){
