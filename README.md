@@ -16,7 +16,7 @@ This is a version==0 smart contract that contains a minimum viable version of ou
 ### How does the smart contract work?
 The hedged asset along with the price floor is stored in the contract sturcture. <br>
 
-As an when the assets value increases, the price floor adjusts to the 85% of the current(increased) asset value in the market. <br>
+As and when the assets value increases, the price floor adjusts to the 85% of the current(increased) asset value in the market. <br>
 
 An upkeep task scheduled uses Chainlinks price feed registry/Oracle to get price information of an asset at a constant interval. <br>
 
