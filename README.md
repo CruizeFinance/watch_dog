@@ -26,7 +26,8 @@ When the user returns to the protocol to withdraw their hedged asset, the protoc
 
 
 <br>
-Framework of the Smart Contract: <i>Truffle</i>
+
+### Framework of the Smart Contract: <i>Truffle</i>
 
 <br>
 
