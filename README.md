@@ -44,6 +44,10 @@ When the user returns to the protocol to withdraw their hedged asset, the protoc
 
 ### Testing conditions Implemented
 <br>
-Currently the contract is implemented to internally swap an asset when it drops below the price floor. <br> This was done to analyze how many times over a given a period is an asset going below the price floor which is when the contract has to make sure we have enough USDC in our pool to enable withdrawal during a market downfall. <br>
+
+Currently the contract is implemented to internally swap an asset when it drops below the price floor. <br> 
+
+This was done to analyze how many times over a given a period is an asset going below the price floor which is when the contract has to make sure we have enough USDC in our pool to enable withdrawal during a market downfall. <br>
+
 This data will help us integrate certain safety checks such as: <br>
 to make sure the contract is equipped with enough USDC in our pool to enable withdrawal of the asset.
