@@ -292,7 +292,7 @@ contract StopLoss is KeeperCompatibleInterface {
         uint256 total_asset_value;
         uint256 dip_amount; // Amount of dip in the asset the user wants to set as a limit below which it'll be swapped with stablecoint
         bool executed;
-         uint256 index;
+        uint256 index;
     }
 
     event AssetInformationUploadedEvent(
@@ -303,6 +303,7 @@ contract StopLoss is KeeperCompatibleInterface {
         uint256 dip_amount,
         bool executed,
         bool created
+       
     );
     mapping(address => AssetInformation[]) public assetInformations; 
     AssetInformation[] public limitOrders;
@@ -501,13 +502,9 @@ uint256 length =  assetInformations[msg.sender].length;
  
 }
 
-    // Will give the balance of the asset that the user currently has credited in the account.
-    // function getBalance(address _userAddress) external view returns(Balance) {
-    //   return(balances[_userAddress]);
-    // }
 
     // Tested: working as expected 
-    function withdraw(uint _amt, address _token ,uint256 index) external returns(bool) {
+    function withdraw(uint _amt, address _token,uint256 index) external payable returns(bool) {
       withdrawfromAAVE(_token,_amt,address(this));
       cancelOrder(index);
       IERC20 token = IERC20(_token);
@@ -520,24 +517,20 @@ uint256 length =  assetInformations[msg.sender].length;
       address asset_desired, 
       address asset_deposited, 
       uint total_asset_value, 
-      uint dip_amount) external 
+      uint dip_amount) public  payable
         {
         // .approve() must be called from the asset contract directly on the front end!
         require(dip_amount > 0,"dip-amount must be  > 0");
         // require(balances[msg.sender]._amt == 0, 'This beta only allows for one order to be open at a time');
         assetInformationCount++;
         IERC20 token = IERC20(asset_deposited);
-        
         // Require the transferFrom() function to return true before the value is credited 
-        require(
+      
           token.transferFrom(
             msg.sender, 
             address(this), 
-            total_asset_value)
-        );
-        
-        // Appendding the users deposited funds and trade details.
-        
+            total_asset_value);
+       
         uint256 order = assetInformations[msg.sender].length;
      // Appendding the users deposited funds and trade details.
       assetInformations[msg.sender].push (AssetInformation(
@@ -549,54 +542,10 @@ uint256 length =  assetInformations[msg.sender].length;
       true,
       order
      ));   
-
-          
          stakeToAAVE(asset_deposited, total_asset_value);
     }
 
-    // Tested Working as expected 
-    // function stopLoss_deposit(
-      // address asset_desired,
-      // address asset_deposited,
-      // uint total_asset_value,
-      // uint dip_amount) external 
-      // {
-      //   // .approve() must be called from the asset contract directly on the front end
-      //   require(dip_amount > 0, 'dip-amount must be >0');
-      //   require(balances[msg.sender]._amt == 0, 'This beta only allows for one order to be open at a time');
-      //   assetInformationCount++;
-      //   IERC20 token = IERC20(asset_deposited);
-
-      //   // Require that the transferFrom() function to return true before the value is credited
-      //   require(
-      //     token.transferFrom(
-      //       msg.sender,
-      //       address(this),
-      //       total_asset_value)
-      //   );
-
-      //   //Appendding the accredited  
-      //   balances[msg.sender] = Balance(msg.sender, asset_deposited, total_asset_value);
-      //   stopOrders.push(AssetInformation(
-      //     msg.sender,
-      //     asset_desired,
-      //     asset_deposited,
-      //     total_asset_value,
-      //     dip_amount,
-      //     false)
-      //   );
-      //   emit AssetInformationUploadedEvent(
-      //     msg.sender,
-      //     asset_desired,
-      //     asset_deposited,
-      //     total_asset_value,
-      //     dip_amount,
-      //     false,
-      //     false
-      //   );
-        
-      //   stakeToAAVE(asset_deposited, total_asset_value);
-      // }
+  
       
 
 
@@ -679,28 +628,11 @@ uint256 length =  assetInformations[msg.sender].length;
 
       performData;
     }
-    function viewOrders(address _address) public view returns(address, address, uint, uint) {
-      for(uint i=0; i<stopOrders.length; i++) {
-        if(_address == stopOrders[i].Token_owner) {
-          return (
-            stopOrders[i].asset_desired,
-            stopOrders[i].asset_deposited,
-            stopOrders[i].total_asset_value,
-            stopOrders[i].dip_amount
-            );
-        }
-      }
-      for(uint i=0;i<limitOrders.length; i++) {
-        if(_address == limitOrders[i].Token_owner) {
-          return(
-            limitOrders[i].asset_desired,
-            limitOrders[i].asset_deposited,
-            limitOrders[i].total_asset_value,
-            limitOrders[i].dip_amount
-          );
-        }
-      }
-    }
+  
+function My_order()public view returns (  AssetInformation [] memory){
+   return  assetInformations[msg.sender];
+}
+
   
 }
    
