@@ -499,7 +499,6 @@ contract StopLoss is KeeperCompatibleInterface {
       Balance memory user = balances[msg.sender];
       require(user._amt >= _amt);
       withdrawfromAAVE(_token,_amt,address(this));
-      cancelOrder();
       uint newBal = user._amt - _amt;
       IERC20 token = IERC20(_token);
       require(token.transfer(msg.sender, _amt));
